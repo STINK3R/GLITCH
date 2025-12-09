@@ -1,7 +1,9 @@
+import csv
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import HTTPException, status
+from openpyxl import Workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -9,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from events.enums.events import EventCity, EventStatus, EventType
 from events.models.events import Event, EventMembers
 from events.schemas.requests import EventRequest, EventUpdateRequest
+from main.config.settings import settings
 from users.models.user import User
 
 
@@ -40,7 +43,7 @@ class EventsService:
             conditions.append(Event.end_date <= end_date)
         if max_members is not None:
             conditions.append(Event.max_members == max_members)
-            
+
         # TODO: search by name in Event.name
         if name is not None:
             conditions.append(Event.name == name)
@@ -50,7 +53,6 @@ class EventsService:
             conditions.append(Event.status == status)
         if city is not None:
             conditions.append(Event.city == city)
-
 
         if conditions:
             query = query.where(*conditions)
@@ -76,7 +78,13 @@ class EventsService:
             .options(selectinload(Event.members))
             .where(Event.id == event_id)
         )
-        return result.scalar_one_or_none()
+        event = result.scalar_one_or_none()
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+        return event
 
     @staticmethod
     async def create_event(session: AsyncSession, event: EventRequest, image_path: str):
@@ -89,6 +97,7 @@ class EventsService:
             description=event.description,
             pay_data=event.pay_data,
             max_members=event.max_members,
+            location=event.location,
             city=event.city,
             type=event.type,
         )
@@ -118,13 +127,13 @@ class EventsService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User already joined the event"
             )
-        
+
         if event.max_members is not None and len(event.members) >= event.max_members:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Event is full"
             )
-        
+
         event.members.append(user)
         await session.commit()
 
@@ -175,7 +184,7 @@ class EventsService:
         await session.delete(event)
         await session.commit()
         return True
-    
+
     @staticmethod
     async def update_event(session: AsyncSession, event_id: int, event_request: EventUpdateRequest, new_image_url: Optional[str] = None) -> Event:
         event = await EventsService.get_event_by_id(session, event_id)
@@ -197,3 +206,40 @@ class EventsService:
         await session.commit()
         await session.refresh(event)
         return event
+
+    @staticmethod
+    async def get_event_members(session: AsyncSession, event_id: int) -> List[User]:
+        event = await EventsService.get_event_by_id(session, event_id)
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+        return event.members
+
+    @staticmethod
+    async def export_event_members_to_csv(session: AsyncSession, event_id: int) -> str:
+        members = await EventsService.get_event_members(session, event_id)
+        if not settings.CSV_DIR.exists():
+            settings.CSV_DIR.mkdir(parents=True, exist_ok=True)
+        csv_path = settings.CSV_DIR / f"members_event_{event_id}.csv"
+        with open(csv_path, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(["ID", "Name", "Surname", "Father Name", "Email"])
+            for member in members:
+                writer.writerow([member.id, member.name, member.surname, member.father_name, member.email])
+        return str(csv_path)
+
+    @staticmethod
+    async def export_event_members_to_excel(session: AsyncSession, event_id: int) -> str:
+        members = await EventsService.get_event_members(session, event_id)
+        if not settings.EXCEL_DIR.exists():
+            settings.EXCEL_DIR.mkdir(parents=True, exist_ok=True)
+        excel_path = settings.EXCEL_DIR / f"members_event_{event_id}.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["ID", "Name", "Surname", "Father Name", "Email"])
+        for member in members:
+            ws.append([member.id, member.name, member.surname, member.father_name, member.email])
+        wb.save(excel_path)
+        return str(excel_path)

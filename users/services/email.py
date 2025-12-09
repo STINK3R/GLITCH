@@ -70,6 +70,6 @@ class EmailService:
 
     @staticmethod
     async def send_welcome_email(email: str) -> bool:
-        subject = "Добро пожаловать в Glitch"
+        subject = "Добро пожаловать в Glitch" # TODO: change to Слёт
         html_body = TemplatesService.get_welcome_email_html()
         return await EmailService.send_email(email, subject, html_body)

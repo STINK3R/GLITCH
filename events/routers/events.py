@@ -1,19 +1,16 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, File, status
-from fastapi.datastructures import UploadFile
+from fastapi import APIRouter, Depends, status
 
 from events.enums.events import EventCity, EventStatus, EventType
-from events.schemas.requests import EventRequest, EventUpdateRequest
 from events.schemas.responses import EventResponse
 from events.services.events import EventsService
-from events.services.images import ImagesService
 from main.db.db import SessionDependency
-from main.schemas.responses import MessageResponse
-from users.dependencies.users import admin_dependency, user_dependency
-from users.models.user import User
+from users.dependencies.users import user_dependency
 from users.enums.user import UserRole
+from users.models.user import User
+
 router = APIRouter()
 
 
@@ -57,88 +54,16 @@ async def get_events_request(
     return result
 
 
-@router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
-async def create_event_request(
-    session: SessionDependency,
-    name: str = Body(...),
-    start_date: datetime = Body(...),
-    end_date: datetime = Body(...),
-    description: str = Body(...),
-    short_description: Optional[str] = Body(None),
-    location: Optional[str] = Body(None),
-    pay_data: Optional[str] = Body(None),
-    max_members: Optional[int] = Body(None),
-    type: EventType = Body(...),
-    city: EventCity = Body(...),
-    # admin: User = Depends(admin_dependency),
-    photo: UploadFile = File(...)
-) -> EventResponse:
-
-    event = EventRequest(
-        name=name,
-        start_date=start_date,
-        end_date=end_date,
-        description=description,
-        short_description=short_description,
-        location=location,
-        pay_data=pay_data,
-        max_members=max_members,
-        type=type,
-        city=city
-    )
-
-    image_path = await ImagesService.save_image(photo)
-    event_obj = await EventsService.create_event(session, event, image_path)
-    event_response = EventResponse.model_validate(event_obj)
-    return event_response.model_copy(update={'is_user_in_event': False})
-
-
-@router.put('/events/{event_id}', response_model=EventResponse, status_code=status.HTTP_200_OK)
-async def update_event_request(
+@router.get('/events/{event_id}', response_model=EventResponse, status_code=status.HTTP_200_OK)
+async def get_event_request(
     session: SessionDependency,
     event_id: int,
-    name: str = Body(None),
-    start_date: datetime = Body(None),
-    end_date: datetime = Body(None),
-    description: str = Body(None),
-    short_description: Optional[str] = Body(None),
-    location: Optional[str] = Body(None),
-    pay_data: Optional[str] = Body(None),
-    max_members: Optional[int] = Body(None),
-    city: EventCity = Body(None),
-    photo: UploadFile = File(None),
-    # admin: User = Depends(admin_dependency),
+    user: User = Depends(user_dependency),
 ) -> EventResponse:
-
-    event = EventUpdateRequest(
-        name=name,
-        start_date=start_date,
-        end_date=end_date,
-        description=description,
-        short_description=short_description,
-        location=location,
-        pay_data=pay_data,
-        max_members=max_members,
-        city=city
-    )
-
-    if photo:
-        # TODO: Delete old image
-        image_path = await ImagesService.save_image(photo)
-        event.image_url = image_path
-
-    event_obj = await EventsService.update_event(session, event_id, event)
-    event_response = EventResponse.model_validate(event_obj)
-    return event_response.model_copy(update={'is_user_in_event': False})
-
-@router.delete('/events/{event_id}', response_model=MessageResponse, status_code=status.HTTP_200_OK)
-async def delete_event_request(
-    session: SessionDependency,
-    event_id: int,
-    # admin: User = Depends(admin_dependency),
-) -> MessageResponse:
-    await EventsService.delete_event(session, event_id)
-    return MessageResponse(message="Event deleted successfully")
+    event = await EventsService.get_event_by_id(session, event_id)
+    event_response = EventResponse.model_validate(event)
+    is_user_in_event = user.id in [member.id for member in event.members]
+    return event_response.model_copy(update={'is_user_in_event': is_user_in_event})
 
 
 @router.post("/events/{event_id}/join", response_model=EventResponse, status_code=status.HTTP_200_OK)

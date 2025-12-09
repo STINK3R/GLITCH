@@ -12,7 +12,6 @@ class User(BaseModel):
         Index("idx_user_full_name", "name", "surname", "father_name"),
     )
 
-
     name = Column(String(128), index=True)
     surname = Column(String(128), index=True)
     father_name = Column(String(128), index=True, nullable=True)
