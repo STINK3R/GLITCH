@@ -1,32 +1,27 @@
 /**
  * Главная страница событий (Лента)
- * Отображает сетку событий с вкладками для фильтрации
+ * Отображает фильтры слева и сетку событий справа
  */
 
-import { useEventsStore } from "../../features/events/EventsStore";
+import { useState } from "react";
+import { useEventsStore, EVENT_TABS } from "../../features/events/EventsStore";
 import { useAllEvents } from "../../features/events/useEvents";
-import { EventsTabs } from "../../components/events/EventsTabs";
 import { EventCard } from "../../components/events/EventCard";
+import { EventsFilter } from "../../components/events/EventsFilter";
 
 /**
  * Компонент скелетона карточки для состояния загрузки
  */
 function EventCardSkeleton() {
   return (
-    <div className="flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm border border-neutral-100 animate-pulse">
+    <div className="flex flex-col bg-white rounded-2xl overflow-hidden animate-pulse">
       {/* Изображение */}
-      <div className="aspect-[16/10] bg-neutral-200" />
+      <div className="aspect-[4/3] bg-neutral-200" />
 
       {/* Контент */}
       <div className="p-4 space-y-3">
-        <div className="h-6 bg-neutral-200 rounded w-3/4" />
-        <div className="h-4 bg-neutral-100 rounded w-full" />
-        <div className="h-4 bg-neutral-100 rounded w-2/3" />
-
-        <div className="flex gap-4 pt-2">
-          <div className="h-4 bg-neutral-100 rounded w-24" />
-          <div className="h-4 bg-neutral-100 rounded w-16" />
-        </div>
+        <div className="h-5 bg-neutral-200 rounded w-3/4" />
+        <div className="h-4 bg-neutral-100 rounded w-1/2" />
       </div>
     </div>
   );
@@ -37,7 +32,7 @@ function EventCardSkeleton() {
  */
 function EmptyState({ message = "Нет событий" }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="flex flex-col items-center justify-center py-16 text-center col-span-full">
       <div className="w-20 h-20 mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
         <svg
           className="w-10 h-10 text-neutral-400"
@@ -55,7 +50,7 @@ function EmptyState({ message = "Нет событий" }) {
       </div>
       <h3 className="text-lg font-medium text-neutral-900">{message}</h3>
       <p className="mt-1 text-sm text-neutral-500">
-        Попробуйте проверить другие вкладки
+        Попробуйте изменить фильтры или проверить другие вкладки
       </p>
     </div>
   );
@@ -66,7 +61,7 @@ function EmptyState({ message = "Нет событий" }) {
  */
 function ErrorState({ message = "Произошла ошибка", onRetry }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="flex flex-col items-center justify-center py-16 text-center col-span-full">
       <div className="w-20 h-20 mb-4 rounded-full bg-red-50 flex items-center justify-center">
         <svg
           className="w-10 h-10 text-red-400"
@@ -89,7 +84,7 @@ function ErrorState({ message = "Произошла ошибка", onRetry }) {
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-4 px-4 py-2 text-sm font-medium text-violet-600 bg-violet-50 rounded-xl hover:bg-violet-100 transition-colors"
+          className="mt-4 px-4 py-2 text-sm font-medium text-[#EE2C34] bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
         >
           Попробовать снова
         </button>
@@ -98,56 +93,108 @@ function ErrorState({ message = "Произошла ошибка", onRetry }) {
   );
 }
 
+/**
+ * Форматирование числа с пробелами (1000 -> 1 000)
+ */
+function formatNumber(num) {
+  return num?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") || "0";
+}
+
 export function EventsPage() {
+  const activeTab = useEventsStore((s) => s.activeTab);
   const getCurrentEvents = useEventsStore((s) => s.getCurrentEvents);
-  const { currentQuery, isLoading, isError } = useAllEvents();
+  
+  // Состояние фильтров (API формат)
+  const [filters, setFilters] = useState({});
+
+  const { currentQuery, activeEventsQuery, isLoading, isError } = useAllEvents(filters);
 
   // Получаем события для текущей вкладки
   const events = getCurrentEvents();
 
+  // Заголовок в зависимости от активной вкладки
+  const getTitle = () => {
+    switch (activeTab) {
+      case EVENT_TABS.MY:
+        return "Мои события";
+      case EVENT_TABS.ACTIVE:
+        return "Все события";
+      case EVENT_TABS.PAST:
+        return "Прошедшие события";
+      default:
+        return "Все события";
+    }
+  };
+
+  // Применить фильтры
+  const handleApplyFilters = (newFilters) => {
+    console.log("Применены фильтры:", newFilters);
+    setFilters(newFilters);
+  };
+
+  // Сбросить фильтры и перезагрузить данные
+  const handleResetFilters = () => {
+    setFilters({});
+    // Перезагружаем данные после сброса
+    setTimeout(() => {
+      activeEventsQuery?.refetch();
+    }, 0);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Заголовок */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900">События</h1>
-          <p className="mt-2 text-neutral-600">
-            Узнавайте о мероприятиях и участвуйте в них
-          </p>
-        </div>
-
-        {/* Вкладки */}
-        <div className="mb-8">
-          <EventsTabs />
-        </div>
-
-        {/* Контент */}
-        {isLoading ? (
-          // Состояние загрузки - скелетоны
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <EventCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : isError ? (
-          // Состояние ошибки
-          <ErrorState
-            message="Ошибка загрузки"
-            onRetry={() => currentQuery?.refetch()}
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <div className="flex gap-8">
+          {/* Боковая панель фильтров */}
+          <EventsFilter
+            filters={filters}
+            onFiltersChange={setFilters}
+            onApply={handleApplyFilters}
+            onReset={handleResetFilters}
           />
-        ) : events.length === 0 ? (
-          // Пустое состояние
-          <EmptyState message="Нет событий" />
-        ) : (
-          // Сетка карточек событий
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
-        )}
+
+          {/* Основной контент */}
+          <main className="flex-1 min-w-0">
+            {/* Заголовок с количеством */}
+            <div className="flex items-baseline gap-3 mb-6">
+              <h1 className="text-2xl font-bold text-neutral-900">
+                {getTitle()}
+              </h1>
+              <span className="text-2xl font-bold text-neutral-400">
+                {formatNumber(events.length)}
+              </span>
+            </div>
+
+            {/* Сетка событий */}
+            {isLoading ? (
+              // Состояние загрузки - скелетоны
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <EventCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : isError ? (
+              // Состояние ошибки
+              <ErrorState
+                message="Ошибка загрузки"
+                onRetry={() => currentQuery?.refetch()}
+              />
+            ) : events.length === 0 ? (
+              // Пустое состояние
+              <EmptyState message="Нет событий" />
+            ) : (
+              // Сетка карточек событий
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {events.map((event, index) => (
+                  <EventCard key={event.id || index} event={event} />
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );
 }
 
+export default EventsPage;

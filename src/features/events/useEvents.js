@@ -14,8 +14,20 @@ export const EVENTS_QUERY_KEYS = {
   my: ["events", "my"],
   past: ["events", "past"],
   detail: (id) => ["events", "detail", id],
+  similar: (type, excludeId) => ["events", "similar", type, excludeId],
   participants: (id) => ["events", "participants", id],
 };
+
+/**
+ * Нормализовать ответ API (может быть массив или объект с items)
+ */
+function normalizeResponse(data) {
+  if (Array.isArray(data)) return data;
+  if (data?.items) return data.items;
+  if (data?.events) return data.events;
+  if (data?.data) return data.data;
+  return [];
+}
 
 /**
  * Хук для получения событий пользователя
@@ -27,25 +39,27 @@ export function useMyEvents() {
     queryKey: EVENTS_QUERY_KEYS.my,
     queryFn: async () => {
       const data = await eventsApi.getMy();
-      setMyEvents(data);
-      return data;
+      const events = normalizeResponse(data);
+      setMyEvents(events);
+      return events;
     },
-    staleTime: 1000 * 60 * 5, // 5 минут
+    staleTime: 1000 * 60 * 5,
   });
 }
 
 /**
- * Хук для получения активных событий
+ * Хук для получения активных событий с фильтрацией
  */
-export function useActiveEvents() {
+export function useActiveEvents(filters = {}) {
   const setActiveEvents = useEventsStore((s) => s.setActiveEvents);
 
   return useQuery({
-    queryKey: EVENTS_QUERY_KEYS.active,
+    queryKey: [...EVENTS_QUERY_KEYS.active, filters],
     queryFn: async () => {
-      const data = await eventsApi.getActive();
-      setActiveEvents(data);
-      return data;
+      const data = await eventsApi.getActive(filters);
+      const events = normalizeResponse(data);
+      setActiveEvents(events);
+      return events;
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -61,8 +75,9 @@ export function usePastEvents() {
     queryKey: EVENTS_QUERY_KEYS.past,
     queryFn: async () => {
       const data = await eventsApi.getPast();
-      setPastEvents(data);
-      return data;
+      const events = normalizeResponse(data);
+      setPastEvents(events);
+      return events;
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -70,12 +85,13 @@ export function usePastEvents() {
 
 /**
  * Хук для загрузки всех событий по вкладкам
+ * @param {Object} filters - Параметры фильтрации (применяются к активным событиям)
  */
-export function useAllEvents() {
+export function useAllEvents(filters = {}) {
   const activeTab = useEventsStore((s) => s.activeTab);
 
   const myEventsQuery = useMyEvents();
-  const activeEventsQuery = useActiveEvents();
+  const activeEventsQuery = useActiveEvents(filters);
   const pastEventsQuery = usePastEvents();
 
   // Определяем текущий запрос на основе активной вкладки
@@ -90,14 +106,8 @@ export function useAllEvents() {
     activeEventsQuery,
     pastEventsQuery,
     currentQuery,
-    isLoading:
-      myEventsQuery.isLoading ||
-      activeEventsQuery.isLoading ||
-      pastEventsQuery.isLoading,
-    isError:
-      myEventsQuery.isError ||
-      activeEventsQuery.isError ||
-      pastEventsQuery.isError,
+    isLoading: currentQuery?.isLoading || false,
+    isError: currentQuery?.isError || false,
   };
 }
 
@@ -131,10 +141,7 @@ export function useConfirmParticipation() {
   return useMutation({
     mutationFn: (eventId) => eventsApi.confirmParticipation(eventId),
     onSuccess: (_, eventId) => {
-      // Обновляем локальное состояние
       updateEventParticipation(eventId, true);
-
-      // Инвалидируем кэш для обновления данных с сервера
       queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
     },
   });
@@ -152,10 +159,7 @@ export function useCancelParticipation() {
   return useMutation({
     mutationFn: (eventId) => eventsApi.cancelParticipation(eventId),
     onSuccess: (_, eventId) => {
-      // Обновляем локальное состояние
       updateEventParticipation(eventId, false);
-
-      // Инвалидируем кэш для обновления данных с сервера
       queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
     },
   });
@@ -173,3 +177,16 @@ export function useEventParticipants(eventId) {
   });
 }
 
+/**
+ * Хук для получения похожих событий по типу
+ * @param {string} type - Тип события
+ * @param {number|string} excludeId - ID события для исключения
+ */
+export function useSimilarEvents(type, excludeId) {
+  return useQuery({
+    queryKey: EVENTS_QUERY_KEYS.similar(type, excludeId),
+    queryFn: () => eventsApi.getSimilar(type, excludeId),
+    enabled: !!type && !!excludeId,
+    staleTime: 1000 * 60 * 5,
+  });
+}

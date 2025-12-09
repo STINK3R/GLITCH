@@ -53,7 +53,7 @@ export async function http(path, options = {}) {
     });
 
     const message =
-      (payload && (payload.message || payload.error || payload.detail)) ||
+      (payload && (JSON.stringify(payload.detail) || payload.message || payload.error || payload.detail)) ||
       (typeof payload === "string" ? payload : "") ||
       `HTTP error! Status: ${res.status}`;
     throw new Error(message);

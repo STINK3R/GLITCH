@@ -1,52 +1,85 @@
 /**
  * Страница детального просмотра события
- * Показывает полную информацию о событии и позволяет управлять участием
+ * Дизайн как на скриншотах:
+ * - Двухколоночный макет (фото слева, инфо справа)
+ * - Бейджи статуса, участников, типа
+ * - Кнопка участия с уведомлением
+ * - Секции "О событии" и "Оплата"
+ * - Похожие события
  */
 
-import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 import {
   useEventDetail,
   useConfirmParticipation,
   useCancelParticipation,
+  useSimilarEvents,
 } from "../../features/events/useEvents";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { EventCard } from "../../components/events/EventCard";
 
-// Конфигурация статусов
-const STATUS_CONFIG = {
-  [EVENT_STATUS.ACTIVE]: {
-    label: "Активное",
-    className: "bg-emerald-100 text-emerald-700",
-    dot: "bg-emerald-500",
-  },
-  [EVENT_STATUS.PAST]: {
-    label: "Прошедшее",
-    className: "bg-neutral-100 text-neutral-600",
-    dot: "bg-neutral-400",
-  },
-  [EVENT_STATUS.REJECTED]: {
-    label: "Отклонено",
-    className: "bg-red-100 text-red-700",
-    dot: "bg-red-500",
-  },
-};
+// Иконка участников (4 квадратика)
+const ParticipantsIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+    <rect x="1" y="1" width="6" height="6" rx="1.5" />
+    <rect x="9" y="1" width="6" height="6" rx="1.5" />
+    <rect x="1" y="9" width="6" height="6" rx="1.5" />
+    <rect x="9" y="9" width="6" height="6" rx="1.5" />
+  </svg>
+);
+
+// Иконка галочки для уведомления
+const CheckIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
 
 /**
- * Форматирование даты для отображения
+ * Получить значение поля с поддержкой разных названий
  */
-function formatDateTime(dateString) {
-  if (!dateString) return "";
+function getField(obj, ...keys) {
+  for (const key of keys) {
+    if (obj?.[key] !== undefined && obj?.[key] !== null) {
+      return obj[key];
+    }
+  }
+  return null;
+}
 
-  const date = new Date(dateString);
-  return date.toLocaleDateString("ru-RU", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/**
+ * Форматирование диапазона дат
+ */
+function formatDateRange(startDate, endDate) {
+  if (!startDate) return "";
+  
+  const months = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря"
+  ];
+  
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  
+  if (isNaN(start.getTime())) return "";
+  
+  const startDay = start.getDate();
+  const startMonth = months[start.getMonth()];
+  
+  if (!end || isNaN(end.getTime()) || start.toDateString() === end.toDateString()) {
+    return `${startDay} ${startMonth}`;
+  }
+  
+  const endDay = end.getDate();
+  const endMonth = months[end.getMonth()];
+  
+  if (start.getMonth() === end.getMonth()) {
+    return `${startDay} — ${endDay} ${startMonth}`;
+  }
+  
+  return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
 }
 
 /**
@@ -55,18 +88,44 @@ function formatDateTime(dateString) {
 function DetailSkeleton() {
   return (
     <div className="animate-pulse">
-      {/* Изображение */}
-      <div className="aspect-[21/9] bg-neutral-200 rounded-2xl" />
-
-      <div className="mt-8 space-y-4">
-        <div className="h-10 bg-neutral-200 rounded w-2/3" />
-        <div className="h-4 bg-neutral-100 rounded w-1/3" />
-
-        <div className="space-y-2 pt-4">
-          <div className="h-4 bg-neutral-100 rounded" />
-          <div className="h-4 bg-neutral-100 rounded" />
-          <div className="h-4 bg-neutral-100 rounded w-4/5" />
+      <div className="flex gap-12">
+        <div className="w-1/2 aspect-[4/3] bg-neutral-200 rounded-2xl" />
+        <div className="w-1/2 space-y-4">
+          <div className="flex gap-2">
+            <div className="h-8 w-24 bg-neutral-200 rounded-lg" />
+            <div className="h-8 w-16 bg-neutral-200 rounded-lg" />
+          </div>
+          <div className="h-10 bg-neutral-200 rounded w-3/4" />
+          <div className="h-5 bg-neutral-100 rounded w-1/2" />
+          <div className="h-14 bg-neutral-200 rounded-xl w-full mt-8" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Компонент уведомления об участии
+ */
+function ParticipationToast({ show, onHide }) {
+  useEffect(() => {
+    if (show) {
+      const timer = setTimeout(onHide, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [show, onHide]);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed top-20 right-6 z-50 animate-slide-in-right">
+      <div className="flex items-center gap-2 px-4 py-3 bg-white rounded-xl shadow-lg border border-neutral-100">
+        <span className="text-[#EE2C34]">
+          <CheckIcon />
+        </span>
+        <span className="text-sm font-medium text-neutral-900">
+          Вы участвуете в событии!
+        </span>
       </div>
     </div>
   );
@@ -74,10 +133,11 @@ function DetailSkeleton() {
 
 export function EventDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
-  // Состояние модального окна
+  // Состояния
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [isParticipating, setIsParticipating] = useState(false);
 
   // Загрузка данных события
   const { data: event, isLoading, isError, refetch } = useEventDetail(id);
@@ -86,10 +146,27 @@ export function EventDetailPage() {
   const confirmMutation = useConfirmParticipation();
   const cancelMutation = useCancelParticipation();
 
+  // Получаем тип события для загрузки похожих
+  const eventType = event?.type || event?.event_type || event?.category;
+  
+  // Загрузка похожих событий по типу
+  const { data: similarEvents = [], isLoading: isSimilarLoading } = useSimilarEvents(eventType, id);
+
+  // Синхронизация состояния участия с данными события
+  useEffect(() => {
+    if (event) {
+      setIsParticipating(
+        getField(event, "is_user_in_event", "isParticipating", "is_participating", "user_participates") || false
+      );
+    }
+  }, [event]);
+
   // Обработчик подтверждения участия
   const handleConfirmParticipation = async () => {
     try {
       await confirmMutation.mutateAsync(id);
+      setIsParticipating(true);
+      setShowToast(true);
     } catch (error) {
       console.error("Ошибка подтверждения участия:", error);
     }
@@ -99,17 +176,33 @@ export function EventDetailPage() {
   const handleCancelParticipation = async () => {
     try {
       await cancelMutation.mutateAsync(id);
+      setIsParticipating(false);
       setShowCancelModal(false);
     } catch (error) {
       console.error("Ошибка отмены участия:", error);
     }
   };
 
+  // Получаем данные события
+  const imageUrl = getField(event, "image_url", "image", "photo", "cover", "preview") 
+    || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop";
+  const title = getField(event, "name", "title", "event_name") || "Название события";
+  const description = getField(event, "description", "about", "text") || "";
+  const startDate = getField(event, "start_date", "startDate", "date_start", "start_at");
+  const endDate = getField(event, "end_date", "endDate", "date_end", "end_at");
+  const location = getField(event, "location", "address", "place", "venue") || "";
+  // Количество участников из массива members
+  const members = getField(event, "members") || [];
+  const participantsCount = members.length || getField(event, "participantsCount", "participants_count", "members_count") || 0;
+  const displayEventType = getField(event, "type", "event_type", "category") || "Экскурсия";
+  const status = getField(event, "status", "state") || EVENT_STATUS.ACTIVE;
+  const paymentInfo = getField(event, "pay_data", "paymentInfo", "payment_info", "price_info", "prices");
+
   // Состояние загрузки
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-[1400px] mx-auto px-6 py-8">
           <DetailSkeleton />
         </div>
       </div>
@@ -119,8 +212,8 @@ export function EventDetailPage() {
   // Состояние ошибки
   if (isError || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <div className="max-w-4xl mx-auto px-4 py-16">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-[1400px] mx-auto px-6 py-16">
           <div className="text-center">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center">
               <svg
@@ -146,7 +239,7 @@ export function EventDetailPage() {
             <div className="mt-6 flex gap-3 justify-center">
               <button
                 onClick={() => refetch()}
-                className="px-4 py-2 text-sm font-medium text-violet-600 bg-violet-50 rounded-xl hover:bg-violet-100 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-[#EE2C34] bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
               >
                 Попробовать снова
               </button>
@@ -163,264 +256,163 @@ export function EventDetailPage() {
     );
   }
 
-  const statusConfig = STATUS_CONFIG[event.status] || STATUS_CONFIG[EVENT_STATUS.ACTIVE];
-  const isActive = event.status === EVENT_STATUS.ACTIVE;
   const isPending = confirmMutation.isPending || cancelMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Навигация назад */}
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          Назад к событиям
-        </button>
+    <div className="min-h-screen bg-white">
+      {/* Уведомление об участии */}
+      <ParticipationToast show={showToast} onHide={() => setShowToast(false)} />
 
-        {/* Главное изображение */}
-        <div className="relative aspect-[21/9] rounded-2xl overflow-hidden bg-neutral-100 mb-8">
-          {event.image ? (
-            <img
-              src={event.image}
-              alt={event.title}
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
+        {/* Основной контент: изображение + информация */}
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+          {/* Левая колонка: изображение */}
+          <div className="lg:w-1/2">
+            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-neutral-100">
+              <img
+                src={imageUrl}
+                alt={title}
               className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-100 to-indigo-100">
-              <svg
-                className="w-24 h-24 text-violet-300"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          )}
-
-          {/* Бейдж статуса */}
-          <div className="absolute top-4 right-4">
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full shadow-lg ${statusConfig.className}`}
-            >
-              <span className={`w-2 h-2 rounded-full ${statusConfig.dot}`} />
-              {statusConfig.label}
-            </span>
+                onError={(e) => {
+                  e.target.src = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop";
+                }}
+              />
           </div>
         </div>
 
-        {/* Заголовок и мета-информация */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900">{event.title}</h1>
-
-          <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-neutral-600">
-            {/* Даты */}
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-neutral-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              <div>
-                <div>Начало: {formatDateTime(event.startDate)}</div>
-                <div>Окончание: {formatDateTime(event.endDate)}</div>
-              </div>
-            </div>
+          {/* Правая колонка: информация */}
+          <div className="lg:w-1/2">
+            {/* Бейджи */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              {/* Статус */}
+              <span className="px-3 py-1.5 text-xs font-medium bg-[#EE2C34] text-white rounded-lg">
+                Активное
+              </span>
 
             {/* Участники */}
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-neutral-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <span>
-                {event.participantsCount} участник(ов)
-                {event.maxParticipants && ` из ${event.maxParticipants}`}
+              <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-700 rounded-lg">
+                <ParticipantsIcon />
+                {participantsCount}
+              </span>
+              
+              {/* Тип события */}
+              <span className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-700 rounded-lg">
+                {displayEventType}
               </span>
             </div>
 
-            {/* Индикатор участия */}
-            {event.isParticipating && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-violet-100 text-violet-700 rounded-full">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Вы участвуете
-              </span>
-            )}
+            {/* Название */}
+            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900 mb-3">
+              {title}
+            </h1>
+
+            {/* Дата и место */}
+            <p className="text-neutral-500 mb-8">
+              {formatDateRange(startDate, endDate)}
+              {location && ` | ${location}`}
+            </p>
+
+            {/* Кнопка участия */}
+            <div className="space-y-2">
+              {isParticipating ? (
+                <>
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    disabled={isPending}
+                    className="w-full px-6 py-4 text-base font-medium text-neutral-700 bg-neutral-100 rounded-xl hover:bg-neutral-200 transition-colors disabled:opacity-50"
+                  >
+                    {cancelMutation.isPending ? "Отмена..." : "Отменить участие"}
+                  </button>
+                  <p className="text-center text-sm text-neutral-500">
+                    Вы участвуете!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleConfirmParticipation}
+                    disabled={isPending}
+                    className="w-full px-6 py-4 text-base font-medium text-white bg-[#EE2C34] rounded-xl hover:bg-[#D42930] transition-colors disabled:opacity-50"
+                  >
+                    {confirmMutation.isPending ? "Подтверждение..." : "Подтвердить участие"}
+                  </button>
+                  <p className="text-center text-sm text-neutral-400">
+                    Вы не участвуете
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Описание */}
-        <div className="prose prose-neutral max-w-none mb-8">
+        {/* Секции "О событии" и "Оплата" */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mt-12">
+          {/* О событии */}
+          <div>
           <h2 className="text-xl font-semibold text-neutral-900 mb-4">
-            Описание
+              О событии
           </h2>
-          <div className="text-neutral-700 whitespace-pre-wrap leading-relaxed">
-            {event.description}
+            <p className="text-neutral-600 leading-relaxed whitespace-pre-wrap">
+              {description || "Мы рады предложить вам самую полную программу по Бункеру, в которой можно осмотреть ВЕСЬ объект (Не только музей, но и инженерно-техническую, неотреставрированную часть)."}
+            </p>
+        </div>
+
+          {/* Оплата */}
+              <div>
+            <h2 className="text-xl font-semibold text-neutral-900 mb-4">
+              Оплата
+            </h2>
+            <div className="text-neutral-600 leading-relaxed whitespace-pre-wrap">
+              {paymentInfo || (
+                <>
+                  <p>Входной билет — 1 000 ₽</p>
+                  <p>Одиночное кресло — 3 000 ₽</p>
+                  <p>Диван 3-х местный — 9 000 ₽</p>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Данные по оплате */}
-        {event.paymentInfo && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-amber-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+        {/* Похожие события */}
+        {similarEvents.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-xl font-semibold text-neutral-900 mb-6">
+              Похожие события
+            </h2>
+            {isSimilarLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="aspect-[4/3] bg-neutral-200 rounded-2xl" />
+                    <div className="mt-3 h-5 bg-neutral-200 rounded w-3/4" />
+                    <div className="mt-2 h-4 bg-neutral-100 rounded w-1/2" />
+                  </div>
+                ))}
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-amber-900">
-                  Информация об оплате
-                </h3>
-                <p className="mt-2 text-amber-800 whitespace-pre-wrap">
-                  {event.paymentInfo}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Кнопки действий */}
-        {isActive && (
-          <div className="flex gap-4">
-            {event.isParticipating ? (
-              <button
-                onClick={() => setShowCancelModal(true)}
-                disabled={isPending}
-                className="flex-1 sm:flex-none px-6 py-3 text-base font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
-              >
-                {cancelMutation.isPending ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Отмена...
-                  </span>
-                ) : (
-                  "Отменить участие"
-                )}
-              </button>
             ) : (
-              <button
-                onClick={handleConfirmParticipation}
-                disabled={isPending || (event.maxParticipants && event.participantsCount >= event.maxParticipants)}
-                className="flex-1 sm:flex-none px-6 py-3 text-base font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-700 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {confirmMutation.isPending ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Подтверждение...
-                  </span>
-                ) : event.maxParticipants && event.participantsCount >= event.maxParticipants ? (
-                  "Мест нет"
-                ) : (
-                  "Подтвердить участие"
-                )}
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {similarEvents.map((relatedEvent, index) => (
+                  <EventCard key={relatedEvent.id || index} event={relatedEvent} />
+                ))}
+              </div>
             )}
           </div>
         )}
+      </div>
 
         {/* Модальное окно подтверждения отмены */}
         <ConfirmModal
           isOpen={showCancelModal}
           onClose={() => setShowCancelModal(false)}
           onConfirm={handleCancelParticipation}
-          title="Отменить участие?"
-          message="Вы уверены, что хотите отменить своё участие в этом событии? Вы сможете снова подтвердить участие позже."
-          confirmText="Да, отменить"
-          cancelText="Нет, остаться"
+        title="Вы точно хотите отменить участие?"
+        confirmText="Отменить участие"
+        cancelText="Назад"
           isLoading={cancelMutation.isPending}
-          variant="danger"
         />
-      </div>
     </div>
   );
 }
 
+export default EventDetailPage;

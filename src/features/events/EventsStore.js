@@ -11,16 +11,20 @@ export const EVENT_TABS = {
   PAST: "past",
 };
 
-// Статусы событий
+// Статусы событий (согласно API: "coming soon", "active", "completed", "cancelled")
 export const EVENT_STATUS = {
+  COMING_SOON: "coming soon",
   ACTIVE: "active",
-  PAST: "past",
-  REJECTED: "rejected",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  // Для обратной совместимости
+  PAST: "completed",
+  REJECTED: "cancelled",
 };
 
 export const useEventsStore = create((set, get) => ({
-  // Текущая активная вкладка
-  activeTab: EVENT_TABS.MY,
+  // Текущая активная вкладка (по умолчанию "Активные")
+  activeTab: EVENT_TABS.ACTIVE,
 
   // Списки событий по категориям
   myEvents: [],
@@ -104,31 +108,27 @@ export const useEventsStore = create((set, get) => ({
       // Обновляем во всех списках
       const updateList = (events) =>
         events.map((event) =>
-          event.id === eventId
+          String(event.id) === String(eventId)
             ? {
                 ...event,
+                is_user_in_event: isParticipating,
                 isParticipating,
-                participantsCount: isParticipating
-                  ? event.participantsCount + 1
-                  : event.participantsCount - 1,
               }
             : event
         );
 
       return {
         myEvents: isParticipating
-          ? [...state.myEvents, state.activeEvents.find((e) => e.id === eventId)].filter(Boolean)
-          : state.myEvents.filter((e) => e.id !== eventId),
+          ? [...state.myEvents, state.activeEvents.find((e) => String(e.id) === String(eventId))].filter(Boolean)
+          : state.myEvents.filter((e) => String(e.id) !== String(eventId)),
         activeEvents: updateList(state.activeEvents),
         pastEvents: updateList(state.pastEvents),
         selectedEvent:
-          state.selectedEvent?.id === eventId
+          String(state.selectedEvent?.id) === String(eventId)
             ? {
                 ...state.selectedEvent,
+                is_user_in_event: isParticipating,
                 isParticipating,
-                participantsCount: isParticipating
-                  ? state.selectedEvent.participantsCount + 1
-                  : state.selectedEvent.participantsCount - 1,
               }
             : state.selectedEvent,
       };
