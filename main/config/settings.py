@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RESET_TOKEN_EXPIRE_HOURS: int = 24
-    RESET_URL: str = 'http://localhost:3000/reset-password'
+    APP_URL: str = 'http://localhost:3000'
+    RESET_URL: str = '/reset-password'
+    VERIFICATION_URL: str = '/verify-email'
     DATABASE_URL: str = 'postgresql+asyncpg://postgres:postgres@db:5432/postgres'
 
     SMTP_HOST: str = 'smtp.gmail.com'

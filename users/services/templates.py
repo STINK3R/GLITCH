@@ -1,5 +1,7 @@
 from pathlib import Path
+from string import Template
 
+from main.config.settings import settings
 
 class TemplatesService:
     @staticmethod
@@ -15,11 +17,28 @@ class TemplatesService:
             return f.read()
 
     @staticmethod
-    def get_verification_email_html(verification_code: str) -> str:
-        template = TemplatesService.load_template("verification.html")
-        return template.format(verification_code=verification_code)
+    def get_verification_email_html(verification_code: str, verification_url: str) -> str:
+        template_content = TemplatesService.load_template("verification.html")
+        template = Template(template_content)
+        return template.substitute(
+            verification_code=verification_code, 
+            verification_url=verification_url
+            )
 
     @staticmethod
     def get_password_reset_email_html(reset_url: str) -> str:
-        template = TemplatesService.load_template("password_reset.html")
-        return template.format(reset_url=reset_url)
+        template_content = TemplatesService.load_template("password_reset.html")
+        template = Template(template_content)
+        return template.substitute(reset_url=reset_url)
+
+    @staticmethod
+    def get_password_reset_success_email_html() -> str:
+        template_content = TemplatesService.load_template("password_reset_success.html")
+        template = Template(template_content)
+        return template.substitute(app_url=settings.APP_URL)
+    
+    @staticmethod
+    def get_welcome_email_html() -> str:
+        template_content = TemplatesService.load_template("welcome.html")
+        template = Template(template_content)
+        return template.substitute(app_url=settings.APP_URL)

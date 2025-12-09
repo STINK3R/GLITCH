@@ -2,8 +2,9 @@ import random
 import string
 from datetime import datetime, timedelta
 from typing import Optional
-
+from fastapi import HTTPException, status
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError
 
 from main.config.settings import settings
 
@@ -59,6 +60,11 @@ class AuthService:
             if payload.get("type") != token_type:
                 return None
             return payload
+        except ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired"
+            )
         except JWTError:
             return None
 

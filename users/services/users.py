@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from users.enums.user import UserRole
 from users.models.user import User
 from users.schemas.requests import RegisterRequest
 from users.services.auth import AuthService
@@ -39,14 +40,14 @@ class UsersService:
         return user is not None
 
     @staticmethod
-    async def verify_user_password(session: AsyncSession, email: str, password: str) -> tuple[bool, int]:
+    async def verify_user_password(session: AsyncSession, email: str, password: str) -> tuple[bool, int, UserRole]:
         user = await UsersService.get_user_by_email(session, email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User not found"
             )
-        return AuthService.verify_hash(password, user.hashed_password), user.id
+        return AuthService.verify_hash(password, user.hashed_password), user.id, user.role
 
     @staticmethod
     async def reset_password(session: AsyncSession, email: str, new_password: str):

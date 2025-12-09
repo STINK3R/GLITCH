@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from typing import Literal
 
 
 class RegisterRequest(BaseModel):
@@ -45,3 +46,9 @@ class ResetPasswordRequest(BaseModel):
 class ResetPasswordApplyRequest(BaseModel):
     reset_token: str
     password: str
+    repeat_password: str
+
+
+class ResendEmailRequest(BaseModel):
+    email: EmailStr
+    type: Literal['verification', 'reset']

@@ -16,7 +16,6 @@ class EmailService:
     async def send_email(
         email: str,
         subject: str,
-        body: str,
         html_body: Optional[str] = None
     ) -> bool:
 
@@ -26,12 +25,8 @@ class EmailService:
             message['To'] = email
             message['Subject'] = subject
 
-            text_part = MIMEText(body, 'plain', 'utf-8')
-            message.attach(text_part)
-
-            if html_body:
-                html_part = MIMEText(html_body, 'html', 'utf-8')
-                message.attach(html_part)
+            html_part = MIMEText(html_body, 'html', 'utf-8')
+            message.attach(html_part)
 
             smtp = aiosmtplib.SMTP(
                 hostname=settings.SMTP_HOST,
@@ -54,64 +49,25 @@ class EmailService:
     async def send_verification_email(email: str, verification_code: str) -> bool:
 
         subject = "Подтверждение регистрации"
-        body = f"""
-Здравствуйте!
-
-Для завершения регистрации введите следующий код верификации:
-
-{verification_code}
-
-Если вы не регистрировались на нашем сайте, проигнорируйте это письмо.
-
-С уважением,
-Команда Glitch
-        """
-
-        html_body = TemplatesService.get_verification_email_html(verification_code)
-        return await EmailService.send_email(email, subject, body, html_body)
+        verification_url = f"{settings.APP_URL}{settings.VERIFICATION_URL}?code={verification_code}"
+        html_body = TemplatesService.get_verification_email_html(verification_code, verification_url)
+        return await EmailService.send_email(email, subject, html_body)
 
     @staticmethod
     async def send_password_reset_email(email: str, reset_token: str) -> bool:
-        reset_url = f"{settings.RESET_URL}?token={reset_token}"
+        reset_url = f"{settings.APP_URL}{settings.RESET_URL}?token={reset_token}"
         subject = "Сброс пароля"
-        body = f"""
-Здравствуйте!
-
-Вы запросили сброс пароля для вашего аккаунта.
-
-Для сброса пароля перейдите по следующей ссылке:
-{reset_url}
-
-Если вы не запрашивали сброс пароля, проигнорируйте это письмо.
-
-С уважением,
-Команда Glitch
-        """
         html_body = TemplatesService.get_password_reset_email_html(reset_url)
-        return await EmailService.send_email(email, subject, body, html_body)
+        return await EmailService.send_email(email, subject, html_body)
 
     @staticmethod
     async def send_password_reset_success_email(email: str) -> bool:
         subject = "Сброс пароля успешно выполнен"
-        body = """
-Здравствуйте!
-
-Ваш пароль был успешно сброшен.
-
-С уважением,
-Команда Glitch
-        """
-        return await EmailService.send_email(email, subject, body)
+        html_body = TemplatesService.get_password_reset_success_email_html()
+        return await EmailService.send_email(email, subject, html_body)
 
     @staticmethod
     async def send_welcome_email(email: str) -> bool:
         subject = "Добро пожаловать в Glitch"
-        body = """
-Здравствуйте!
-
-Добро пожаловать в Glitch!
-
-С уважением,
-Команда Glitch
-        """
-        return await EmailService.send_email(email, subject, body)
+        html_body = TemplatesService.get_welcome_email_html()
+        return await EmailService.send_email(email, subject, html_body)
