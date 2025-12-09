@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { useAuthStore } from "../features/auth/AuthStore";
+
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export async function http(path, options = {}) {
   const token = localStorage.getItem("token");
@@ -32,6 +34,11 @@ export async function http(path, options = {}) {
     } catch (_) {
       payload = null;
     }
+  }
+
+  if (res.status === 401) {
+    // Если получен 401 Unauthorized, сбрасываем авторизацию
+    useAuthStore.getState().logout();
   }
 
   if (!res.ok) {

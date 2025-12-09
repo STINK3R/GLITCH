@@ -7,7 +7,7 @@ import { Login } from "./features/auth/Login/Login.jsx";
 import { Register } from "./features/auth/Registration/Registration.jsx";
 import { EventsPage } from "./pages/Events/EventsPage.jsx";
 import { EventDetailPage } from "./pages/Events/EventDetailPage.jsx";
-import { ProtectedRoute } from "./components/layouts/ProtectedRotes.jsx";
+import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
 
 export default function AppRoutes() {
   return (

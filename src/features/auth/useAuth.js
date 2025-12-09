@@ -10,6 +10,7 @@ import { authApi } from "./api";
 export function useAuth() {
   const navigate = useNavigate();
   const loginStore = useAuthStore((state) => state.login);
+  const setToken = useAuthStore((state) => state.setToken);
   const logoutStore = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
@@ -22,6 +23,8 @@ export function useAuth() {
    */
   async function login(email, password) {
     const data = await authApi.login(email, password);
+    // Предполагаем, что API возвращает { token, user }
+    // Если формат другой, здесь нужно будет адаптировать
     loginStore(data);
     return data;
   }
@@ -35,6 +38,23 @@ export function useAuth() {
   async function register(email, password) {
     const data = await authApi.register(email, password);
     return data;
+  }
+
+  /**
+   * Обновление токена
+   * @returns {Promise<Object>} Новый токен
+   */
+  async function refresh() {
+    try {
+      const data = await authApi.refresh();
+      if (data && data.token) {
+        setToken(data.token);
+      }
+      return data;
+    } catch (error) {
+      logout(); // Если обновить не удалось, разлогиниваем
+      throw error;
+    }
   }
 
   /**
@@ -66,6 +86,7 @@ export function useAuth() {
     token,
     login,
     register,
+    refresh,
     logout,
     isAuthenticated,
     isAdmin,

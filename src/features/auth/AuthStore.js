@@ -42,6 +42,16 @@ export const useAuthStore = create((set, get) => ({
     }),
 
   /**
+   * Обновить только токен
+   * @param {string} token - Новый токен
+   */
+  setToken: (token) =>
+    set(() => {
+      localStorage.setItem("token", token);
+      return { token };
+    }),
+
+  /**
    * Выход из системы
    */
   logout: () =>
