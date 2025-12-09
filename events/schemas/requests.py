@@ -3,8 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, model_validator
 
-from events.enums.events import EventCity
-from events.enums.events import EventType
+from events.enums.events import EventCity, EventType, EventStatus
+
 
 class EventRequest(BaseModel):
     name: str
@@ -36,3 +36,4 @@ class EventUpdateRequest(BaseModel):
     max_members: Optional[int] = None
     city: Optional[EventCity] = None
     image_url: Optional[str] = None
+    status: Optional[EventStatus] = None

@@ -158,7 +158,7 @@ async def auth_request(request: AuthRequest, session: SessionDependency):
             surname=user.surname,
             father_name=user.father_name,
             email=user.email,
-            role=user.role    
+            role=user.role
         )
     )
 
@@ -239,7 +239,7 @@ async def reset_password_apply_request(data: ResetPasswordApplyRequest, session:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid reset token"
         )
-    
+
     if data.password != data.repeat_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

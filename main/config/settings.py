@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     MEDIA_DIR: Path = Path(__file__).parent.parent / 'media'
     IMAGES_DIR: Path = MEDIA_DIR / 'images'
     AVATARS_DIR: Path = MEDIA_DIR / 'avatars'
+    EXCEL_DIR: Path = MEDIA_DIR / 'excel'
+    CSV_DIR: Path = MEDIA_DIR / 'csv'
 
     class Config:
         env_file = ".env"
