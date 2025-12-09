@@ -6,6 +6,7 @@ import { ResetPasswordPage } from "./features/auth/Recovery/ResetPasswordPage.js
 import { VerifyEmail } from "./features/auth/Verification/VerifyEmail.jsx";
 import { EventsPage } from "./pages/Events/EventsPage.jsx";
 import { EventDetailPage } from "./pages/Events/EventDetailPage.jsx";
+import { ProfilePage } from "./pages/Profile/ProfilePage.jsx";
 import { TermsPage } from "./pages/Legal/TermsPage.jsx";
 import { PrivacyPage } from "./pages/Legal/PrivacyPage.jsx";
 import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
@@ -20,7 +21,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/recovery" element={<PasswordRecovery />} />
-      
+
       {/* Ссылки из писем */}
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
@@ -43,6 +44,16 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <EventDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Профиль пользователя */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

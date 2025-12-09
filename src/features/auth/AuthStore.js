@@ -41,7 +41,7 @@ export const useAuthStore = create((set, get) => ({
     set(() => {
       const accessToken = data.access_token;
       const refreshToken = data.refresh_token;
-      
+
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
       // Для совместимости с http.js
@@ -51,23 +51,23 @@ export const useAuthStore = create((set, get) => ({
         localStorage.setItem("user", JSON.stringify(userData));
       }
 
-      return { 
-        user: userData || get().user, 
-        accessToken, 
+      return {
+        user: userData || get().user,
+        accessToken,
         refreshToken,
-        token: accessToken 
+        token: accessToken
       };
     }),
 
   /**
    * Обновить только токены
    */
-  setTokens: (accessToken, refreshToken) => 
+  setTokens: (accessToken, refreshToken) =>
     set(() => {
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
-        localStorage.setItem("token", accessToken);
-        return { accessToken, refreshToken, token: accessToken };
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("token", accessToken);
+      return { accessToken, refreshToken, token: accessToken };
     }),
 
   /**

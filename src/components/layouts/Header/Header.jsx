@@ -120,22 +120,26 @@ export default function Header() {
                 {/* Разделитель */}
                 <div className="w-px h-6 bg-neutral-200 mx-2" />
 
-                {/* Информация о пользователе */}
-                <div className="flex items-center gap-3">
+                {/* Информация о пользователе (ссылка на профиль) */}
+                <NavLink 
+                    to="/profile"
+                    className={({ isActive }) => `flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors ${isActive ? "bg-neutral-100" : "hover:bg-neutral-50"}`}
+                >
                   {/* Аватар и имя */}
                   <div className="hidden sm:flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#EE2C34] to-[#D9252D] rounded-full flex items-center justify-center text-white text-sm font-medium">
                       {user?.name?.charAt(0)?.toUpperCase() || "U"}
                     </div>
                     <span className="text-sm font-medium text-neutral-700 max-w-[120px] truncate">
-                      {user?.name || "Пользователь"}
+                      {user?.name || "Профиль"}
                     </span>
                   </div>
+                </NavLink>
 
-                  {/* Кнопка выхода */}
-                  <button
-                    onClick={handleLogout}
-                    title="Выход"
+                {/* Кнопка выхода */}
+                <button
+                  onClick={handleLogout}
+                  title="Выход"
                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-neutral-600 hover:bg-red-50 hover:text-[#EE2C34] transition-colors"
                   >
                     <svg
@@ -153,7 +157,6 @@ export default function Header() {
                     </svg>
                     <span className="hidden sm:inline">Выход</span>
                   </button>
-                </div>
               </>
             ) : (
               <>
