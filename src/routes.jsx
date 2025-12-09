@@ -1,10 +1,7 @@
-/**
- * Конфигурация маршрутов приложения
- */
-
 import { Route, Routes, Navigate } from "react-router-dom";
 import { Login } from "./features/auth/Login/Login.jsx";
 import { Register } from "./features/auth/Registration/Registration.jsx";
+import { PasswordRecovery } from "./features/auth/Recovery/PasswordRecovery.jsx";
 import { EventsPage } from "./pages/Events/EventsPage.jsx";
 import { EventDetailPage } from "./pages/Events/EventDetailPage.jsx";
 import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
@@ -18,6 +15,7 @@ export default function AppRoutes() {
       {/* Авторизация */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/recovery" element={<PasswordRecovery />} />
 
       {/* Защищённые маршруты - события */}
       <Route

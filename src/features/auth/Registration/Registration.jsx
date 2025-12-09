@@ -1,86 +1,101 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../useAuth";
+import { AuthLayout } from "../AuthLayout";
+import { CredentialsStep } from "./steps/CredentialsStep";
+import { VerificationStep } from "./steps/VerificationStep";
+import { DetailsStep } from "./steps/DetailsStep";
 
 export const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const [error, setError] = useState("");
+  
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    name: "",
+    surname: "",
+    patronymic: "",
+  });
 
-  /**
-   * Обработка отправки формы регистрации
-   * @param {Event} e
-   */
-  async function onSubmit(e) {
-    e.preventDefault();
+  const handleCredentialsSubmit = (data) => {
+    setFormData((prev) => ({ ...prev, ...data }));
+    // Simulate API call to send code
     setLoading(true);
-    setErr("");
+    setTimeout(() => {
+      setLoading(false);
+      setStep(1);
+    }, 1000);
+  };
+
+  const handleVerificationSubmit = (code) => {
+    // Simulate verification
+    setLoading(true);
+    setTimeout(() => {
+        setLoading(false);
+        setStep(2);
+    }, 1000);
+  };
+
+  const handleDetailsSubmit = async (details) => {
+    setLoading(true);
+    setError("");
     try {
-      await register(email, password);
+      // Final registration
+      // We combine all data. 
+      // Note: The actual API might only accept email/password as per previous conversation.
+      // But for this task we assume we send what we can or just register basic and mock the rest.
+      
+      const fullData = { ...formData, ...details };
+      await register(fullData.email, fullData.password);
+      
+      // If there was a profile update endpoint, we would call it here:
+      // await updateProfile({ name: fullData.name, ... });
+      
       navigate("/login");
     } catch (e) {
-      setErr(e.message || "Ошибка регистрации");
+      setError(e.message || "Ошибка регистрации");
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const handleBack = () => {
+    if (step > 0) setStep((s) => s - 1);
+    else navigate(-1);
+  };
 
   return (
-    <div className="min-h-[calc(100vh-56px)] flex items-center justify-center p-4">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 bg-white rounded-lg shadow p-6">
-        <p className="text-[13px] color=[#828282]">Умный контроль вашего рациона</p>
-        {/*<div className="">*/}
-        {/*  */}
-        {/*</div>*/}
-        {err && <div className="text-sm text-red-600">{err}</div>}
-        <div className="space-y-1.5">
-          <label className="block text-sm">Email</label>
-          <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-              className="w-full bg-[#EFEFEF] rounded-[20px] px-5 py-3 focus:[#171717]"
-              placeholder="you@example.com"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-sm">Пароль</label>
-          <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              required
-              className="w-full bg-[#EFEFEF] rounded-[20px] px-5 py-3 focus:text-[#171717]"
-              placeholder="Введите ваш пароль (мин. 8 символов)"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-sm">Подтвердить пароль</label>
-          <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-              className="w-full bg-[#EFEFEF] rounded-[20px] px-5 py-3 focus:text-[#171717]"
-              placeholder="Введите ваш пароль (мин. 8 символов)"
-          />
-        </div>
-        <button
-            disabled={loading}
-            type="submit"
-            className="w-full mt-[20px] rounded-[20px] bg-[#EE2C34]  text-white py-3 disabled:opacity-60"
-        >
-          {loading ? "Вход..." : "Далее"}
-        </button>
-        <div className="text-sm text-center mt-[35px]">
-          <div className="text-[13px] color-[#828282] weight-400 ">Продолжая, вы соглашаетесь с <a underline className="decoration-dashed text-[var(--main-color)] ">
-            нашими Условиями использования</a> и <a className="underline text-[var(--main-color)] ">Политикой конфиденциальности</a></div>
-        </div>
-      </form>
-    </div>
+    <AuthLayout 
+      showBack={step > 0} 
+      onBack={handleBack}
+    >
+      {step === 0 && (
+        <CredentialsStep 
+          onNext={handleCredentialsSubmit} 
+          loading={loading} 
+          error={error} 
+        />
+      )}
+      
+      {step === 1 && (
+        <VerificationStep 
+          email={formData.email} 
+          onNext={handleVerificationSubmit} 
+          loading={loading} 
+        />
+      )}
+      
+      {step === 2 && (
+        <DetailsStep 
+          onNext={handleDetailsSubmit} 
+          loading={loading} 
+        />
+      )}
+    </AuthLayout>
   );
 };
