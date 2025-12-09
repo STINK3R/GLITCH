@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { AuthInput } from "../../../../components/ui/AuthInput";
 import { AuthButton } from "../../../../components/ui/AuthButton";
 
@@ -56,6 +57,4 @@ export const DetailsStep = ({ onNext, loading }) => {
   );
 };
 
-// Helper for Link
-import { Link } from "react-router-dom";
 

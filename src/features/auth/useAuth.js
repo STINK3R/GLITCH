@@ -17,52 +17,50 @@ export function useAuth() {
 
   /**
    * Авторизация пользователя
-   * @param {string} email - Email пользователя (username)
+   * @param {string} email - Email пользователя
    * @param {string} password - Пароль
    */
   async function login(email, password) {
+    // API использует email
     const data = await authApi.login(email, password);
-    // data = { access_token, refresh_token, type: "Bearer" }
-    loginStore(data, { email }); // Сохраняем email как данные пользователя, т.к. API не возвращает user object
+    loginStore(data, { email });
     return data;
   }
 
   /**
-   * Регистрация (финальный вызов API)
-   * @param {Object} data - { email, password, confirmPassword }
+   * Регистрация (полная)
+   * Для совместимости, если вызывается старый метод
    */
   async function register(data) {
-    // API: { username, password, repeat_password }
-    const res = await authApi.register(data.email, data.password, data.confirmPassword || data.password);
-    return res;
+    return await authApi.registerRequest(data);
   }
 
-  // Методы-заглушки для UI потока (т.к. API не поддерживает верификацию email)
-  async function sendRegisterCode(email) {
-    // Имитация задержки
-    return new Promise(resolve => setTimeout(resolve, 1000));
+  /**
+   * Отправка кода регистрации (использует полный запрос регистрации)
+   */
+  async function sendRegisterCode(data) {
+    return await authApi.registerRequest(data);
   }
 
+  /**
+   * Проверка кода (финализация регистрации)
+   */
   async function verifyCode(email, code) {
-    // Имитация проверки (принимаем любой код)
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Можно добавить простую проверку длины
-        if (code.length === 4) resolve(true);
-        else reject(new Error("Неверный формат кода"));
-      }, 1000);
-    });
+    return await authApi.registerConfirm(email, code);
   }
 
-  // Методы заглушки для восстановления пароля
+  /**
+   * Отправка кода восстановления
+   */
   async function sendRecoveryCode(email) {
-    return new Promise(resolve => setTimeout(resolve, 1000));
+    return await authApi.resetPasswordRequest(email);
   }
 
-  async function resetPassword(email, code, password) {
-    // Здесь нет API сброса пароля, поэтому просто имитируем
-    // Или можно вызвать какой-то другой метод, если он появится
-    return new Promise(resolve => setTimeout(resolve, 1000));
+  /**
+   * Сброс пароля
+   */
+  async function resetPassword(token, password, repeatPassword) {
+    return await authApi.resetPasswordConfirm(token, password, repeatPassword);
   }
 
   /**

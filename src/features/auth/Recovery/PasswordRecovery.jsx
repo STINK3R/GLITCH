@@ -28,22 +28,18 @@ export const PasswordRecovery = () => {
     };
 
     const handleVerificationSubmit = async (code) => {
-        setLoading(true);
-        try {
-            await verifyCode(email, code);
-            setRecoveryCode(code);
-            setStep(2);
-        } catch (e) {
-            alert(e.message || "Неверный код");
-        } finally {
-            setLoading(false);
-        }
+        // API восстановления не имеет отдельного метода проверки кода без смены пароля
+        // Поэтому здесь просто запоминаем код и идем дальше
+        // (Или можно вызвать confirm с фейковым паролем, но это плохо)
+        // В ResetPasswordApplyRequest нужен reset_token (это и есть код)
+        setRecoveryCode(code);
+        setStep(2);
     };
 
     const handlePasswordSubmit = async (password) => {
         setLoading(true);
         try {
-            await resetPassword(email, recoveryCode, password);
+            await resetPassword(recoveryCode, password, password);
             navigate("/login");
         } catch (e) {
             alert(e.message || "Ошибка сброса пароля");
