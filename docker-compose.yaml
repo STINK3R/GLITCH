@@ -8,6 +8,8 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - db
+    env_file:
+      - .env
     networks:
       - app-network
   db:
