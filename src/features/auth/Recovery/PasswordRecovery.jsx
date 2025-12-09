@@ -1,42 +1,55 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../useAuth";
 import { AuthLayout } from "../AuthLayout";
 import { EmailStep } from "./steps/EmailStep";
 import { VerificationStep } from "../Registration/steps/VerificationStep";
 import { NewPasswordStep } from "./steps/NewPasswordStep";
 
 export const PasswordRecovery = () => {
+    const { sendRecoveryCode, verifyCode, resetPassword } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState("");
+    const [recoveryCode, setRecoveryCode] = useState("");
 
-    const handleEmailSubmit = (emailData) => {
+    const handleEmailSubmit = async (emailData) => {
         setEmail(emailData);
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            await sendRecoveryCode(emailData);
             setStep(1);
-        }, 1000);
+        } catch (e) {
+            alert(e.message || "Ошибка отправки кода");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleVerificationSubmit = (code) => {
+    const handleVerificationSubmit = async (code) => {
         setLoading(true);
-        // Simulate verification
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            await verifyCode(email, code);
+            setRecoveryCode(code);
             setStep(2);
-        }, 1000);
+        } catch (e) {
+            alert(e.message || "Неверный код");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handlePasswordSubmit = (password) => {
+    const handlePasswordSubmit = async (password) => {
         setLoading(true);
-        // Simulate password reset
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            await resetPassword(email, recoveryCode, password);
             navigate("/login");
-        }, 1000);
+        } catch (e) {
+            alert(e.message || "Ошибка сброса пароля");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleBack = () => {

@@ -22,7 +22,8 @@ export const Login = () => {
       await login(email, password);
       navigate("/");
     } catch (e) {
-      setErr(e.message || "Ошибка входа");
+      console.error(e);
+      setErr("Неверный email или пароль");
     } finally {
       setLoading(false);
     }

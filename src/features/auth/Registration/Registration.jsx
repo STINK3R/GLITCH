@@ -7,7 +7,7 @@ import { VerificationStep } from "./steps/VerificationStep";
 import { DetailsStep } from "./steps/DetailsStep";
 
 export const Register = () => {
-  const { register } = useAuth();
+  const { register, sendRegisterCode, verifyCode } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -22,43 +22,63 @@ export const Register = () => {
     patronymic: "",
   });
 
-  const handleCredentialsSubmit = (data) => {
+  const handleCredentialsSubmit = async (data) => {
     setFormData((prev) => ({ ...prev, ...data }));
-    // Simulate API call to send code
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError("");
+    try {
+      // Имитация отправки кода (API не поддерживает реальную отправку)
+      await sendRegisterCode(data.email);
       setStep(1);
-    }, 1000);
+    } catch (e) {
+      setError(e.message || "Ошибка отправки кода. Проверьте email.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerificationSubmit = (code) => {
-    // Simulate verification
+  const handleVerificationSubmit = async (code) => {
     setLoading(true);
-    setTimeout(() => {
-        setLoading(false);
-        setStep(2);
-    }, 1000);
+    setError("");
+    try {
+      // Имитация проверки кода
+      await verifyCode(formData.email, code);
+      setStep(2);
+    } catch (e) {
+      alert(e.message || "Неверный код");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDetailsSubmit = async (details) => {
     setLoading(true);
     setError("");
     try {
-      // Final registration
-      // We combine all data. 
-      // Note: The actual API might only accept email/password as per previous conversation.
-      // But for this task we assume we send what we can or just register basic and mock the rest.
+      // Вызываем реальный endpoint регистрации
+      // Игнорируем details (Имя, Фамилия) так как API их не принимает
+      // Передаем email (как username), пароль и подтверждение пароля
+      const fullData = { 
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
+      };
       
-      const fullData = { ...formData, ...details };
-      await register(fullData.email, fullData.password);
+      await register(fullData);
       
-      // If there was a profile update endpoint, we would call it here:
-      // await updateProfile({ name: fullData.name, ... });
+      // Можно сохранить имя/фамилию в локальное хранилище или сделать апдейт профиля, если будет API
+      // localStorage.setItem('temp_user_details', JSON.stringify(details));
       
       navigate("/login");
     } catch (e) {
-      setError(e.message || "Ошибка регистрации");
+      // Обработка ошибок валидации от API (422)
+      // Если придет массив ошибок detail
+      let msg = "Ошибка регистрации";
+      if (e.message && e.message.includes("detail")) {
+          msg = "Ошибка валидации данных";
+      }
+      setError(msg);
+      console.error(e);
     } finally {
       setLoading(false);
     }

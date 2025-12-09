@@ -27,28 +27,47 @@ export const useAuthStore = create((set, get) => ({
   // Данные пользователя (включая роль)
   user: getSavedUser(),
 
-  // JWT токен
-  token: localStorage.getItem("token") || null,
+  // Токены
+  accessToken: localStorage.getItem("accessToken") || null,
+  refreshToken: localStorage.getItem("refreshToken") || null,
+  token: localStorage.getItem("accessToken") || null, // Для обратной совместимости
 
   /**
    * Авторизация пользователя
-   * @param {Object} data - Данные авторизации { token, user }
+   * @param {Object} data - Ответ API { access_token, refresh_token, ... }
+   * @param {Object} userData - Данные пользователя (если есть)
    */
-  login: (data) =>
+  login: (data, userData = null) =>
     set(() => {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      return { user: data.user, token: data.token };
+      const accessToken = data.access_token;
+      const refreshToken = data.refresh_token;
+      
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      // Для совместимости с http.js
+      localStorage.setItem("token", accessToken);
+
+      if (userData) {
+        localStorage.setItem("user", JSON.stringify(userData));
+      }
+
+      return { 
+        user: userData || get().user, 
+        accessToken, 
+        refreshToken,
+        token: accessToken 
+      };
     }),
 
   /**
-   * Обновить только токен
-   * @param {string} token - Новый токен
+   * Обновить только токены
    */
-  setToken: (token) =>
+  setTokens: (accessToken, refreshToken) => 
     set(() => {
-      localStorage.setItem("token", token);
-      return { token };
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("token", accessToken);
+        return { accessToken, refreshToken, token: accessToken };
     }),
 
   /**
@@ -56,9 +75,11 @@ export const useAuthStore = create((set, get) => ({
    */
   logout: () =>
     set(() => {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      return { user: null, token: null };
+      return { user: null, accessToken: null, refreshToken: null, token: null };
     }),
 
   /**
@@ -87,6 +108,6 @@ export const useAuthStore = create((set, get) => ({
    */
   isAuthenticated: () => {
     const state = get();
-    return !!state.token;
+    return !!state.accessToken;
   },
 }));

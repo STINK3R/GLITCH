@@ -5,20 +5,24 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 export async function http(path, options = {}) {
   const token = localStorage.getItem("token");
 
-  const baseHeaders = {
+  const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-  const mergedHeaders = {
-    ...baseHeaders,
-    ...(options.headers || {}),
+    ...options.headers,
   };
 
-  const res = await fetch(API_URL + path, {
+  if (token && !options.skipAuth) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const config = {
     credentials: "include",
     ...options,
-    headers: mergedHeaders,
-  });
+    headers,
+  };
+  
+  delete config.skipAuth; // удаляем кастомное свойство перед передачей в fetch
+
+  const res = await fetch(API_URL + path, config);
 
   const contentType = res.headers.get("content-type") || "";
   let payload = null;
@@ -42,8 +46,14 @@ export async function http(path, options = {}) {
   }
 
   if (!res.ok) {
+    console.error("HTTP Request Failed:", {
+        path,
+        status: res.status,
+        payload
+    });
+
     const message =
-      (payload && (payload.message || payload.error)) ||
+      (payload && (payload.message || payload.error || payload.detail)) ||
       (typeof payload === "string" ? payload : "") ||
       `HTTP error! Status: ${res.status}`;
     throw new Error(message);

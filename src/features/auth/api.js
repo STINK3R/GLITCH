@@ -2,32 +2,42 @@ import { http } from "../../services/http";
 
 /**
  * API методы для авторизации
+ * Соответствуют документации Swagger
  */
 export const authApi = {
     /**
      * Вход в систему
-     * @param {string} email
-     * @param {string} password
+     * POST /api/auth
      */
-    login: (email, password) => http("/api/auth", {
+    login: (username, password) => http("/api/auth", {
         method: "POST",
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password }),
+        skipAuth: true
     }),
 
     /**
      * Регистрация нового пользователя
-     * @param {string} email
-     * @param {string} password
+     * POST /api/register
      */
-    register: (email, password) => http("/api/register", {
+    register: (username, password, repeat_password) => http("/api/register", {
         method: "POST",
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ 
+            username, 
+            password, 
+            repeat_password 
+        }),
+        skipAuth: true
     }),
 
     /**
      * Обновление токена
+     * POST /api/refresh
+     * refresh-token передается в заголовке
      */
-    refresh: () => http("/api/refresh", {
-        method: "POST"
+    refresh: (refreshToken) => http("/api/refresh", {
+        method: "POST",
+        headers: {
+            "refresh-token": refreshToken
+        }
     }),
 };

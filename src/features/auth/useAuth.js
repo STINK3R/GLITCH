@@ -10,49 +10,76 @@ import { authApi } from "./api";
 export function useAuth() {
   const navigate = useNavigate();
   const loginStore = useAuthStore((state) => state.login);
-  const setToken = useAuthStore((state) => state.setToken);
+  const setTokens = useAuthStore((state) => state.setTokens);
   const logoutStore = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
-  const token = useAuthStore((state) => state.token);
+  const token = useAuthStore((state) => state.token); // accessToken
 
   /**
    * Авторизация пользователя
-   * @param {string} email - Email пользователя
+   * @param {string} email - Email пользователя (username)
    * @param {string} password - Пароль
-   * @returns {Promise<Object>} Данные авторизации
    */
   async function login(email, password) {
     const data = await authApi.login(email, password);
-    // Предполагаем, что API возвращает { token, user }
-    // Если формат другой, здесь нужно будет адаптировать
-    loginStore(data);
+    // data = { access_token, refresh_token, type: "Bearer" }
+    loginStore(data, { email }); // Сохраняем email как данные пользователя, т.к. API не возвращает user object
     return data;
   }
 
   /**
-   * Регистрация пользователя
-   * @param {string} email - Email
-   * @param {string} password - Пароль
-   * @returns {Promise<Object>} Результат регистрации
+   * Регистрация (финальный вызов API)
+   * @param {Object} data - { email, password, confirmPassword }
    */
-  async function register(email, password) {
-    const data = await authApi.register(email, password);
-    return data;
+  async function register(data) {
+    // API: { username, password, repeat_password }
+    const res = await authApi.register(data.email, data.password, data.confirmPassword || data.password);
+    return res;
+  }
+
+  // Методы-заглушки для UI потока (т.к. API не поддерживает верификацию email)
+  async function sendRegisterCode(email) {
+    // Имитация задержки
+    return new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  async function verifyCode(email, code) {
+    // Имитация проверки (принимаем любой код)
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // Можно добавить простую проверку длины
+        if (code.length === 4) resolve(true);
+        else reject(new Error("Неверный формат кода"));
+      }, 1000);
+    });
+  }
+
+  // Методы заглушки для восстановления пароля
+  async function sendRecoveryCode(email) {
+    return new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  async function resetPassword(email, code, password) {
+    // Здесь нет API сброса пароля, поэтому просто имитируем
+    // Или можно вызвать какой-то другой метод, если он появится
+    return new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   /**
-   * Обновление токена
-   * @returns {Promise<Object>} Новый токен
+   * Обновить токен
    */
   async function refresh() {
     try {
-      const data = await authApi.refresh();
-      if (data && data.token) {
-        setToken(data.token);
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (!refreshToken) throw new Error("No refresh token");
+
+      const data = await authApi.refresh(refreshToken);
+      if (data && data.access_token) {
+        setTokens(data.access_token, data.refresh_token);
       }
       return data;
     } catch (error) {
-      logout(); // Если обновить не удалось, разлогиниваем
+      logout();
       throw error;
     }
   }
@@ -86,6 +113,10 @@ export function useAuth() {
     token,
     login,
     register,
+    sendRegisterCode,
+    verifyCode,
+    sendRecoveryCode,
+    resetPassword,
     refresh,
     logout,
     isAuthenticated,
