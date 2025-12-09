@@ -1,11 +1,23 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 /**
  * Страница политики конфиденциальности
  */
 export const PrivacyPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Определяем куда вернуться - избегаем цикла между terms и privacy
+  const handleBack = () => {
+    // Если пришли с terms, идём на главную или логин
+    const from = location.state?.from;
+    if (from && !from.includes('/privacy') && !from.includes('/terms')) {
+      navigate(from);
+    } else {
+      navigate('/login');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -13,7 +25,7 @@ export const PrivacyPage = () => {
       <div className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-100 z-10">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center">
           <button 
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors mr-4"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -96,7 +108,7 @@ export const PrivacyPage = () => {
         <div className="mt-8 pt-6 border-t border-neutral-100">
           <Link 
             to="/terms" 
-            className="text-[#EE2C34] hover:underline text-sm font-medium"
+            className="text-[#EE2C34] hover:text-[#D42930] transition-colors duration-300 text-sm font-medium"
           >
             ← Условия использования
           </Link>

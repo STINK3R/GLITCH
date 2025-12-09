@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./useAuth";
 
 /**
@@ -8,20 +8,33 @@ import { useAuth } from "./useAuth";
 export const AuthInitializer = ({ children }) => {
     const { token, refresh, logout } = useAuth();
     const initialized = useRef(false);
+    // Если есть токен, начинаем с состояния проверки
+    const [isChecking, setIsChecking] = useState(!!token);
 
     useEffect(() => {
         if (!initialized.current) {
             initialized.current = true;
 
             if (token) {
-                refresh().catch(() => {
-                    // Если токен невалиден, refresh выбросит ошибку и useAuth вызовет logout
-                    // Но на всякий случай можно явно убедиться, что мы чисты
-                    console.warn("Session expired or invalid, logging out...");
-                });
+                refresh()
+                    .catch(() => {
+                        console.warn("Session expired or invalid, logging out...");
+                        // logout уже вызывается внутри refresh при ошибке
+                    })
+                    .finally(() => {
+                        // Завершаем проверку в любом случае
+                        setIsChecking(false);
+                    });
+            } else {
+                setIsChecking(false);
             }
         }
     }, [token, refresh, logout]);
+
+    // Пока проверяем токен, ничего не рендерим (или можно показать лоадер)
+    if (isChecking) {
+        return null; 
+    }
 
     return children;
 };

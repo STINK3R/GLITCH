@@ -16,6 +16,7 @@ export const PasswordRecovery = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState("forward");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState(null);
@@ -35,6 +36,7 @@ export const PasswordRecovery = () => {
     try {
       await sendRecoveryCode(emailData);
       setTimer(38);
+      setDirection("forward");
       setStep(1);
     } catch (e) {
       const errorMessage = e.message || "Ошибка отправки письма";
@@ -67,8 +69,13 @@ export const PasswordRecovery = () => {
   };
 
   const handleBack = () => {
+    setDirection("back");
     if (step > 0) setStep(0);
     else navigate(-1);
+  };
+
+  const getAnimationClass = () => {
+    return direction === "forward" ? "animate-step-in" : "animate-step-back";
   };
 
   const maskEmail = (email) => {
@@ -86,7 +93,7 @@ export const PasswordRecovery = () => {
       onBack={handleBack}
     >
       {step === 0 && (
-        <div className="animate-fade-in">
+        <div className={getAnimationClass()}>
           <h2 className="text-2xl font-bold mb-2 text-center">Восстановить пароль</h2>
           <p className="text-neutral-400 text-sm text-center mb-8">
             Мы отправим на вашу почту письмо<br />для восстановления доступа
@@ -100,13 +107,15 @@ export const PasswordRecovery = () => {
       )}
 
       {step === 1 && (
-        <EmailSentStep
-          email={email}
-          maskedEmail={maskEmail(email)}
-          timer={timer}
-          loading={loading}
-          onResend={handleResend}
-        />
+        <div className={getAnimationClass()}>
+          <EmailSentStep
+            email={email}
+            maskedEmail={maskEmail(email)}
+            timer={timer}
+            loading={loading}
+            onResend={handleResend}
+          />
+        </div>
       )}
     </AuthLayout>
   );

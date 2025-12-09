@@ -15,7 +15,7 @@ export default function App() {
     return (
         <AuthInitializer>
             {!isAuthPage && <Header />}
-            <main className="page-transition">
+            <main className={isAuthPage ? "" : "page-transition"}>
                 <AppRoutes />
             </main>
         </AuthInitializer>

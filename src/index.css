@@ -40,6 +40,13 @@
   font-display: swap;
 }
 
+/* Класс для полного отключения анимаций */
+.no-animation,
+.no-animation * {
+  animation: none !important;
+  transition: none !important;
+}
+
 /* ===========================================
    Базовые переменные и стили для приложения "Слёт"
    =========================================== */
@@ -138,7 +145,7 @@ button {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.5s ease-out;
 }
 
 /* Масштабирование при появлении */
@@ -435,4 +442,92 @@ button {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+/* ===========================================
+   Анимации для страниц авторизации
+   =========================================== */
+
+/* Анимация появления формы - только opacity, без сдвига */
+@keyframes authSlideIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-auth-slide-in {
+  animation: authSlideIn 0.4s ease-out;
+}
+
+/* Анимация переключения контента формы */
+@keyframes authContentFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.auth-content-transition {
+  animation: authContentFade 0.3s ease-out;
+}
+
+/* Анимация для переходов между шагами регистрации - мягкий fade */
+@keyframes stepSlideIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-step-in {
+  animation: stepSlideIn 0.3s ease-out;
+}
+
+/* Анимация для переходов назад - такой же fade */
+@keyframes stepSlideBack {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-step-back {
+  animation: stepSlideBack 0.3s ease-out;
+}
+
+/* Плавное появление фото слева */
+@keyframes photoReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-photo-reveal {
+  animation: photoReveal 0.6s ease-out;
+}
+
+/* Анимация для переключения табов (Вход/Регистрация) */
+@keyframes tabSwitch {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-tab-switch {
+  animation: tabSwitch 0.2s ease-out;
 }

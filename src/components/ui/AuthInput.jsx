@@ -34,31 +34,35 @@ export const AuthInput = ({
 
   // Определяем стили в зависимости от состояния
   const getInputStyles = () => {
-    const baseStyles = "w-full rounded-2xl px-4 py-3.5 text-base outline-none transition-all duration-200 placeholder:text-neutral-400";
+    // Базовые стили: радиус 20px, высота 48px (через h-12 и flex/centering), отступы
+    // Используем py-3 для высоты контента ~24px + 24px padding = 48px. 
+    // Или проще задать h-12 и flex items-center, но для input это сложнее.
+    // text-base line-height is 24px. 48-24=24. py-3 is 12px top+bottom. Perfect.
+    let styles = "w-full rounded-[20px] px-6 py-3 text-base outline-none transition-all duration-200 placeholder:text-neutral-400 border";
     
     if (hasError) {
-      // Состояние ошибки - красная граница
-      return `${baseStyles} bg-white border border-[#EE2C34] text-neutral-900`;
+      // Ошибка: светло-красный фон, красная рамка, жирный текст
+      return `${styles} bg-[#FDF2F2] border-[#EE2C34] text-neutral-900 font-semibold`;
     }
-    
-    if (hasValue) {
-      // Заполненное состояние
-      if (isFocused || isHovered) {
-        // Заполненное + ховер/фокус - более яркая граница
-        return `${baseStyles} bg-white border border-neutral-300 text-neutral-900`;
-      }
-      // Просто заполненное - белый фон с границей
-      return `${baseStyles} bg-white border border-neutral-200 text-neutral-900`;
-    }
-    
-    // Пустое состояние
+
+    // Во всех остальных случаях фон серый
+    styles += " bg-[#F5F5F5]";
+
+    // Рамка при ховере или фокусе
     if (isFocused || isHovered) {
-      // Ховер + начальное - серый фон с границей
-      return `${baseStyles} bg-[#F5F5F5] border border-neutral-300 text-neutral-900`;
+      styles += " border-neutral-900";
+    } else {
+      styles += " border-transparent";
+    }
+
+    // Жирность текста
+    if (hasValue) {
+      styles += " text-neutral-900 font-semibold";
+    } else {
+      styles += " text-neutral-900";
     }
     
-    // Начальное - серый фон, без границы
-    return `${baseStyles} bg-[#F5F5F5] border border-transparent text-neutral-900`;
+    return styles;
   };
 
   return (
