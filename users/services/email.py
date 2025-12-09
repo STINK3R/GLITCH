@@ -25,6 +25,8 @@ class EmailService:
             message['To'] = email
             message['Subject'] = subject
 
+            if html_body is None:
+                html_body = ""
             html_part = MIMEText(html_body, 'html', 'utf-8')
             message.attach(html_part)
 

@@ -1,16 +1,20 @@
 from asyncio import create_task
 from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Header, HTTPException, status
+
 from main.db.db import SessionDependency
+from main.schemas.responses import MessageResponse
+from users.enums.user import UserStatus
 from users.schemas.requests import (
     AuthRequest,
     RegisterConfirmRequest,
     RegisterRequest,
+    ResendEmailRequest,
     ResetPasswordApplyRequest,
     ResetPasswordRequest,
-    ResendEmailRequest,
 )
-from users.schemas.responses import AuthResponse, MessageResponse, TokenResponse
+from users.schemas.responses import TokenResponse, UserResponse
 from users.services.auth import AuthService
 from users.services.email import EmailService
 from users.services.users import UsersService
@@ -77,7 +81,7 @@ async def register_confirm_request(request: RegisterConfirmRequest, session: Ses
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Too many attempts, please request a new verification code"
         )
-    
+
     if user_dict['expired_at'] < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -117,7 +121,7 @@ async def register_confirm_request(request: RegisterConfirmRequest, session: Ses
 
 @router.post("/auth", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def auth_request(request: AuthRequest, session: SessionDependency):
-    is_valid, user_id, user_role = await UsersService.verify_user_password(
+    is_valid, user = await UsersService.verify_user_password(
         session=session,
         email=request.email,
         password=request.password
@@ -128,15 +132,34 @@ async def auth_request(request: AuthRequest, session: SessionDependency):
             detail="Invalid email or password"
         )
 
-    token_data = {"sub": request.email, "id": user_id}
+    if user.status == UserStatus.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is blocked"
+        )
+
+    if user.status == UserStatus.DELETED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is deleted"
+        )
+
+    token_data = {"sub": request.email, "id": user.id}
     access_token = AuthService.create_access_token(token_data)
     refresh_token = AuthService.create_refresh_token(token_data)
 
-    return AuthResponse(
+    return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         type="Bearer",
-        user_role=user_role
+        user=UserResponse(
+            id=user.id,
+            name=user.name,
+            surname=user.surname,
+            father_name=user.father_name,
+            email=user.email,
+            role=user.role    
+        )
     )
 
 
@@ -216,6 +239,12 @@ async def reset_password_apply_request(data: ResetPasswordApplyRequest, session:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid reset token"
         )
+    
+    if data.password != data.repeat_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
 
     if not await UsersService.user_exists(
         session=session,
@@ -248,7 +277,7 @@ async def resend_verification_email_request(request: ResendEmailRequest, session
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Verification code not found"
             )
-        
+
         verification_code = AuthService.generate_verification_code()
 
         user_dict['code'] = AuthService.get_hash(verification_code)
@@ -265,13 +294,13 @@ async def resend_verification_email_request(request: ResendEmailRequest, session
         return MessageResponse(message="Verification email sent")
     elif request.type == 'reset':
         if not await UsersService.user_exists(
-                session=session,
-                email=request.email
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="User not found"
-                )
+            session=session,
+            email=request.email
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User not found"
+            )
         reset_token = AuthService.generate_reset_token(request.email)
         create_task(EmailService.send_password_reset_email(
             email=request.email,

@@ -3,6 +3,7 @@ from string import Template
 
 from main.config.settings import settings
 
+
 class TemplatesService:
     @staticmethod
     def get_template_path(template_name: str) -> Path:
@@ -21,9 +22,9 @@ class TemplatesService:
         template_content = TemplatesService.load_template("verification.html")
         template = Template(template_content)
         return template.substitute(
-            verification_code=verification_code, 
+            verification_code=verification_code,
             verification_url=verification_url
-            )
+        )
 
     @staticmethod
     def get_password_reset_email_html(reset_url: str) -> str:
@@ -36,7 +37,7 @@ class TemplatesService:
         template_content = TemplatesService.load_template("password_reset_success.html")
         template = Template(template_content)
         return template.substitute(app_url=settings.APP_URL)
-    
+
     @staticmethod
     def get_welcome_email_html() -> str:
         template_content = TemplatesService.load_template("welcome.html")

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from passlib.context import CryptContext
 from pydantic_settings import BaseSettings
 
@@ -21,6 +23,10 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str
 
     PWD_CONTEXT: CryptContext = CryptContext(schemes=["argon2"], deprecated="auto")
+
+    MEDIA_DIR: Path = Path(__file__).parent.parent / 'media'
+    IMAGES_DIR: Path = MEDIA_DIR / 'images'
+    AVATARS_DIR: Path = MEDIA_DIR / 'avatars'
 
     class Config:
         env_file = ".env"
