@@ -35,10 +35,24 @@ export const authApi = {
     /**
      * Подтверждение регистрации кодом (Шаг 2)
      * POST /api/register/confirm
+     * @param {string} email - Email пользователя
+     * @param {string} code - Код подтверждения
      */
     registerConfirm: (email, code) => http("/api/register/confirm", {
         method: "POST",
         body: JSON.stringify({ email, code }),
+        skipAuth: true
+    }),
+
+    /**
+     * Подтверждение регистрации по ссылке (только код)
+     * POST /api/register/confirm
+     * Код содержит в себе email (используется для ссылок из письма)
+     * @param {string} code - Код из ссылки
+     */
+    registerConfirmByCode: (code) => http("/api/register/confirm", {
+        method: "POST",
+        body: JSON.stringify({ code }),
         skipAuth: true
     }),
 
@@ -55,6 +69,9 @@ export const authApi = {
     /**
      * Применение нового пароля (по токену из письма)
      * POST /api/reset-password/confirm
+     * @param {string} token - JWT токен из ссылки
+     * @param {string} password - Новый пароль
+     * @param {string} repeat_password - Подтверждение пароля
      */
     resetPasswordConfirm: (token, password, repeat_password) => http("/api/reset-password/confirm", {
         method: "POST",

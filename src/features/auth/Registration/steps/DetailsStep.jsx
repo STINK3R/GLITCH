@@ -3,58 +3,94 @@ import { Link } from "react-router-dom";
 import { AuthInput } from "../../../../components/ui/AuthInput";
 import { AuthButton } from "../../../../components/ui/AuthButton";
 
-export const DetailsStep = ({ onNext, loading }) => {
+export const DetailsStep = ({ onNext, loading, initialData = {} }) => {
   const [formData, setFormData] = useState({
-    name: "",
-    surname: "",
-    patronymic: "",
+    name: initialData.name || "",
+    surname: initialData.surname || "",
+    patronymic: initialData.patronymic || "",
   });
+  const [errors, setErrors] = useState({});
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Simple validation
-    if (formData.name && formData.surname) {
+    
+    const newErrors = {};
+    let isValid = true;
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Пустое поле";
+      isValid = false;
+    }
+    
+    if (!formData.surname.trim()) {
+      newErrors.surname = "Пустое поле";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+
+    if (isValid) {
       onNext(formData);
     }
   };
 
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: undefined });
+    }
+  };
+
+  const isFormValid = formData.name.trim() !== "" && formData.surname.trim() !== "";
+
   return (
     <div className="animate-fade-in">
-        <h2 className="text-2xl font-bold mb-6 text-center">Ещё немного о вас...</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="text-2xl font-bold mb-8 text-center">Ещё немного о вас...</h2>
+      
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         <AuthInput
           label="Имя"
           placeholder="Введите настоящее имя"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
+          onChange={(e) => handleChange("name", e.target.value)}
+          error={errors.name}
         />
         
         <AuthInput
           label="Фамилия"
           placeholder="Введите настоящую фамилию"
           value={formData.surname}
-          onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
-          required
+          onChange={(e) => handleChange("surname", e.target.value)}
+          error={errors.surname}
         />
 
         <AuthInput
           label="Отчество (необязательно)"
-          placeholder="Введите отчество"
+          placeholder=""
           value={formData.patronymic}
-          onChange={(e) => setFormData({ ...formData, patronymic: e.target.value })}
+          onChange={(e) => handleChange("patronymic", e.target.value)}
         />
 
-        <AuthButton type="submit" disabled={loading} className="mt-6">
+        <AuthButton 
+          type="submit" 
+          disabled={!isFormValid}
+          loading={loading}
+          className="mt-6"
+        >
           Зарегистрироваться
         </AuthButton>
 
-        <p className="text-xs text-center text-neutral-400 mt-4 leading-relaxed px-4">
-            Продолжая, вы соглашаетесь с <Link to="/terms" className="text-[#EE2C34] hover:underline">нашими Условиями использования</Link> и <Link to="/privacy" className="text-[#EE2C34] hover:underline">Политикой конфиденциальности</Link>
+        <p className="text-xs text-center text-neutral-400 mt-6 leading-relaxed px-2">
+          Продолжая, вы соглашаетесь с{" "}
+          <Link to="/terms" className="text-[#EE2C34] hover:underline">
+            нашими Условиями использования
+          </Link>{" "}
+          и{" "}
+          <Link to="/privacy" className="text-[#EE2C34] hover:underline">
+            Политикой конфиденциальности
+          </Link>
         </p>
       </form>
     </div>
   );
 };
-
-

@@ -1,72 +1,94 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../useAuth";
 import { AuthLayout } from "../AuthLayout";
+import { AuthButton } from "../../../components/ui/AuthButton";
+import { authApi } from "../api";
 
+/**
+ * Страница подтверждения email по ссылке из письма
+ * URL формат: /verify-email?code=707368
+ */
 export const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const code = searchParams.get("code");
   const navigate = useNavigate();
-  const { verifyCode } = useAuth(); // Или отдельный метод verifyEmail, если API отличается
   const [status, setStatus] = useState("loading"); // loading, success, error
 
   useEffect(() => {
-    if (!token) {
+    if (!code) {
       setStatus("error");
       return;
     }
 
-    // Здесь мы должны вызвать API для проверки токена
-    // Если API требует email + code, а у нас только token, нужно уточнить API
-    // Предположим, что есть метод verifyEmailToken(token) или verifyCode работает с токеном
-    // В предыдущем коде verifyCode принимал (email, code).
-    // Если ссылка содержит token, это скорее всего другой эндпоинт, например GET /api/verify-email?token=...
-    // Но пока попробуем адаптировать под существующий или добавить новый.
-    
-    // Пока просто симулируем успешную проверку для перехода
-    // TODO: Заменить на реальный вызов, например await authApi.verifyEmail(token)
-    
     const verify = async () => {
-        try {
-            // await authApi.verifyEmail(token); 
-            // Временно имитируем успех через 1.5 сек
-            await new Promise(r => setTimeout(r, 1500));
-            setStatus("success");
-            setTimeout(() => navigate("/login"), 2000);
-        } catch (e) {
-            setStatus("error");
+      try {
+        // Получаем email из localStorage (сохранен при регистрации)
+        const email = localStorage.getItem("pending_verification_email");
+        
+        if (email) {
+          // Подтверждаем с email и кодом
+          await authApi.registerConfirm(email, code);
+          localStorage.removeItem("pending_verification_email");
+        } else {
+          // Пробуем только с кодом
+          await authApi.registerConfirmByCode(code);
         }
+        
+        setStatus("success");
+        // Перенаправляем на вход через 2 секунды
+        setTimeout(() => navigate("/login"), 2000);
+      } catch (e) {
+        console.error("Verification error:", e);
+        setStatus("error");
+      }
     };
-    verify();
 
-  }, [token, navigate]);
+    verify();
+  }, [code, navigate]);
+
+  // Функция для повторной отправки письма
+  const handleResend = () => {
+    navigate("/register");
+  };
 
   return (
-    <AuthLayout>
-      <div className="text-center animate-fade-in">
+    <AuthLayout showBack onBack={() => navigate("/login")}>
+      <div className="text-center animate-fade-in pt-8">
         {status === "loading" && (
-            <div>
-                <h2 className="text-xl font-bold mb-2">Проверка почты...</h2>
-                <div className="w-8 h-8 border-4 border-[#EE2C34] border-t-transparent rounded-full animate-spin mx-auto"></div>
-            </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Проверка почты...</h2>
+            <div className="w-10 h-10 border-4 border-[#EE2C34] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          </div>
         )}
+
         {status === "success" && (
-            <div>
-                <h2 className="text-xl font-bold mb-2 text-green-600">Почта подтверждена!</h2>
-                <p className="text-neutral-500">Сейчас вы будете перенаправлены на вход...</p>
+          <div>
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
+            <h2 className="text-2xl font-bold mb-2">Почта подтверждена!</h2>
+            <p className="text-neutral-400 text-sm">
+              Сейчас вы будете перенаправлены на вход...
+            </p>
+          </div>
         )}
+
         {status === "error" && (
-            <div>
-                <h2 className="text-xl font-bold mb-2 text-red-600">Ошибка подтверждения</h2>
-                <p className="text-neutral-500 mb-4">Ссылка недействительна или устарела.</p>
-                <button onClick={() => navigate("/login")} className="text-[#EE2C34] font-medium">
-                    Вернуться ко входу
-                </button>
-            </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">Ссылка недействительна</h2>
+            <p className="text-neutral-400 text-sm mb-8 leading-relaxed">
+              Похоже, вы перешли по устаревшей или уже<br />
+              использованной ссылке.
+            </p>
+
+            <AuthButton onClick={handleResend}>
+              Отправить новое письмо
+            </AuthButton>
+          </div>
         )}
       </div>
     </AuthLayout>
   );
 };
-

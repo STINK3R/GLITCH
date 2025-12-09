@@ -1,101 +1,162 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../useAuth";
 import { AuthLayout } from "../AuthLayout";
 import { AuthInput } from "../../../components/ui/AuthInput";
 import { AuthButton } from "../../../components/ui/AuthButton";
 
+// Ключ для сохранения email между страницами
+const SHARED_EMAIL_KEY = "auth_shared_email";
+
 export const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  
+  // Восстанавливаем email из sessionStorage
+  const [email, setEmail] = useState(() => {
+    return sessionStorage.getItem(SHARED_EMAIL_KEY) || "";
+  });
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+
+  // Сохраняем email при изменении
+  useEffect(() => {
+    sessionStorage.setItem(SHARED_EMAIL_KEY, email);
+  }, [email]);
+
+  // Валидация email
+  const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    
+    // Проверяем формат email перед отправкой
+    if (!isValidEmail(email)) {
+      setErrors({ email: "Некорректный email" });
+      return;
+    }
+
     setLoading(true);
-    setErr("");
+    setErrors({});
+    
     try {
       await login(email, password);
+      // Очищаем сохранённый email после успешного входа
+      sessionStorage.removeItem(SHARED_EMAIL_KEY);
       navigate("/");
     } catch (e) {
       console.error(e);
-      setErr("Неверный email или пароль");
+      // Показываем ошибку над полями
+      setErrors({ 
+        email: "Неверный email или пароль", 
+        password: true 
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleNavigateToRegister = () => {
+    // Email уже сохранён в sessionStorage
+    navigate("/register");
+  };
+
   const ToggleIcon = ({ visible, onClick }) => (
-    <button type="button" onClick={onClick} className="focus:outline-none">
+    <button 
+      type="button" 
+      onClick={onClick} 
+      className="focus:outline-none text-neutral-400 hover:text-neutral-600 transition-colors"
+    >
       {visible ? (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       ) : (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
         </svg>
       )}
     </button>
   );
 
+  const isFormValid = email.trim() !== "" && password.trim() !== "";
+
   return (
     <AuthLayout>
       <div className="animate-fade-in">
-        {/* Toggle */}
-        <div className="bg-[#F5F5F5] p-1 rounded-2xl flex mb-6">
+        {/* Toggle Вход / Регистрация */}
+        <div className="bg-[#F5F5F5] p-1 rounded-xl flex mb-8">
           <button
-            className="flex-1 py-2.5 text-sm font-medium bg-white shadow-sm rounded-xl text-neutral-900 transition-all"
+            type="button"
+            className="flex-1 py-2.5 text-sm font-medium bg-white shadow-sm rounded-lg text-neutral-900 transition-all"
           >
             Вход
           </button>
           <button
-            onClick={() => navigate("/register")}
-            className="flex-1 py-2.5 text-sm font-medium text-neutral-500 rounded-xl transition-all"
+            type="button"
+            onClick={handleNavigateToRegister}
+            className="flex-1 py-2.5 text-sm font-medium text-neutral-400 rounded-lg transition-all hover:text-neutral-600"
           >
             Регистрация
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-5" noValidate>
           <AuthInput
             label="Email"
             placeholder="Введите ваш email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errors.email) setErrors({});
+            }}
             type="email"
-            required
+            error={errors.email}
           />
           
-          <AuthInput
-            label="Пароль"
-            placeholder="Введите ваш пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type={showPassword ? "text" : "password"}
-            required
-            rightElement={<ToggleIcon visible={showPassword} onClick={() => setShowPassword(!showPassword)} />}
-          />
-
-          <div className="flex justify-end">
-            <Link to="/recovery" className="text-sm text-neutral-500 hover:text-neutral-900">
-              Забыли пароль?
-            </Link>
+          <div>
+            <AuthInput
+              label="Пароль"
+              placeholder="Введите ваш пароль"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors({});
+              }}
+              type={showPassword ? "text" : "password"}
+              error={errors.password}
+              rightElement={<ToggleIcon visible={showPassword} onClick={() => setShowPassword(!showPassword)} />}
+            />
+            <div className="flex justify-end mt-2">
+              <Link to="/recovery" className="text-sm text-[#EE2C34] hover:text-[#D42930] transition-colors">
+                Забыли пароль?
+              </Link>
+            </div>
           </div>
 
-          {err && <div className="text-red-500 text-sm text-center">{err}</div>}
-
-          <AuthButton type="submit" disabled={loading} className="mt-2">
-            {loading ? "Вход..." : "Войти"}
+          <AuthButton 
+            type="submit" 
+            disabled={!isFormValid}
+            loading={loading}
+            className="mt-4"
+          >
+            Войти
           </AuthButton>
 
-          <p className="text-xs text-center text-neutral-400 mt-4 leading-relaxed px-4">
-            Продолжая, вы соглашаетесь с <Link to="/terms" className="text-[#EE2C34] hover:underline">нашими Условиями использования</Link> и <Link to="/privacy" className="text-[#EE2C34] hover:underline">Политикой конфиденциальности</Link>
+          <p className="text-xs text-center text-neutral-400 mt-6 leading-relaxed px-2">
+            Продолжая, вы соглашаетесь с{" "}
+            <Link to="/terms" className="text-[#EE2C34] hover:underline">
+              нашими Условиями использования
+            </Link>{" "}
+            и{" "}
+            <Link to="/privacy" className="text-[#EE2C34] hover:underline">
+              Политикой конфиденциальности
+            </Link>
           </p>
         </form>
       </div>

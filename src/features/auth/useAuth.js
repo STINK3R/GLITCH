@@ -39,14 +39,41 @@ export function useAuth() {
    * Отправка кода регистрации (использует полный запрос регистрации)
    */
   async function sendRegisterCode(data) {
+    // Сохраняем email для последующей верификации через ссылку
+    localStorage.setItem("pending_verification_email", data.email);
     return await authApi.registerRequest(data);
   }
 
   /**
    * Проверка кода (финализация регистрации)
+   * @param {string} email - Email пользователя
+   * @param {string} code - Код подтверждения
    */
   async function verifyCode(email, code) {
-    return await authApi.registerConfirm(email, code);
+    const result = await authApi.registerConfirm(email, code);
+    // Очищаем сохраненный email после успешной верификации
+    localStorage.removeItem("pending_verification_email");
+    return result;
+  }
+
+  /**
+   * Проверка кода по ссылке (только код, email берется из localStorage)
+   * @param {string} code - Код из ссылки
+   */
+  async function verifyEmailByCode(code) {
+    // Пробуем получить email из localStorage
+    const email = localStorage.getItem("pending_verification_email");
+    
+    if (email) {
+      // Если email есть, используем стандартный метод
+      const result = await authApi.registerConfirm(email, code);
+      localStorage.removeItem("pending_verification_email");
+      return result;
+    } else {
+      // Если email нет, пробуем только с кодом (если API поддерживает)
+      const result = await authApi.registerConfirmByCode(code);
+      return result;
+    }
   }
 
   /**
@@ -57,7 +84,10 @@ export function useAuth() {
   }
 
   /**
-   * Сброс пароля
+   * Сброс пароля по токену
+   * @param {string} token - JWT токен из ссылки
+   * @param {string} password - Новый пароль
+   * @param {string} repeatPassword - Подтверждение пароля
    */
   async function resetPassword(token, password, repeatPassword) {
     return await authApi.resetPasswordConfirm(token, password, repeatPassword);
@@ -113,6 +143,7 @@ export function useAuth() {
     register,
     sendRegisterCode,
     verifyCode,
+    verifyEmailByCode,
     sendRecoveryCode,
     resetPassword,
     refresh,

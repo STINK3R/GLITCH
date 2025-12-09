@@ -1,99 +1,113 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../useAuth";
 import { AuthLayout } from "../AuthLayout";
 import { EmailStep } from "./steps/EmailStep";
-import { VerificationStep } from "../Registration/steps/VerificationStep";
-import { NewPasswordStep } from "./steps/NewPasswordStep";
+import { EmailSentStep } from "./steps/EmailSentStep";
+import { useToast } from "../../../components/ui/Toast";
 
+/**
+ * Страница восстановления пароля
+ * Шаг 1: Ввод email
+ * Шаг 2: Уведомление об отправке письма (с кнопкой повторной отправки)
+ */
 export const PasswordRecovery = () => {
-    const { sendRecoveryCode, verifyCode, resetPassword } = useAuth();
-    const navigate = useNavigate();
-    const [step, setStep] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [email, setEmail] = useState("");
-    const [recoveryCode, setRecoveryCode] = useState("");
+  const { sendRecoveryCode } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState(null);
+  const [timer, setTimer] = useState(0);
 
-    const handleEmailSubmit = async (emailData) => {
-        setEmail(emailData);
-        setLoading(true);
-        try {
-            await sendRecoveryCode(emailData);
-            setStep(1);
-        } catch (e) {
-            alert(e.message || "Ошибка отправки кода");
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => setTimer((t) => t - 1), 1000);
+      return () => clearInterval(interval);
+    }
+  }, [timer]);
 
-    const handleVerificationSubmit = async (code) => {
-        // API восстановления не имеет отдельного метода проверки кода без смены пароля
-        // Поэтому здесь просто запоминаем код и идем дальше
-        // (Или можно вызвать confirm с фейковым паролем, но это плохо)
-        // В ResetPasswordApplyRequest нужен reset_token (это и есть код)
-        setRecoveryCode(code);
-        setStep(2);
-    };
+  const handleEmailSubmit = async (emailData) => {
+    setEmail(emailData);
+    setLoading(true);
+    setEmailError(null);
+    try {
+      await sendRecoveryCode(emailData);
+      setTimer(38);
+      setStep(1);
+    } catch (e) {
+      const errorMessage = e.message || "Ошибка отправки письма";
+      
+      if (errorMessage.toLowerCase().includes("not found") || 
+          errorMessage.toLowerCase().includes("email") ||
+          errorMessage.toLowerCase().includes("user")) {
+        setEmailError("Пользователь не найден");
+      } else {
+        setEmailError("Ошибка отправки");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handlePasswordSubmit = async (password) => {
-        setLoading(true);
-        try {
-            await resetPassword(recoveryCode, password, password);
-            navigate("/login");
-        } catch (e) {
-            alert(e.message || "Ошибка сброса пароля");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleResend = async () => {
+    if (timer > 0) return;
+    
+    setLoading(true);
+    try {
+      await sendRecoveryCode(email);
+      setTimer(38);
+      toast.info("Письмо отправлено повторно");
+    } catch (e) {
+      toast.error("Ошибка повторной отправки");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleBack = () => {
-        if (step > 0) setStep((s) => s - 1);
-        else navigate(-1);
-    };
+  const handleBack = () => {
+    if (step > 0) setStep(0);
+    else navigate(-1);
+  };
 
-    const getTitle = () => {
-        if (step === 0) return "Восстановить пароль";
-        if (step === 1) return ""; // Title inside component
-        if (step === 2) return "Восстановление пароля";
-        return "";
-    };
+  const maskEmail = (email) => {
+    if (!email) return "";
+    const [name, domain] = email.split("@");
+    if (name.length <= 4) {
+      return `${name[0]}***@${domain}`;
+    }
+    return `${name.slice(0, 2)}${"*".repeat(Math.min(10, name.length - 4))}${name.slice(-2)}@${domain}`;
+  };
 
-    const getSubtitle = () => {
-        if (step === 0) return "Мы отправим на вашу почту письмо для восстановления доступа";
-        return "";
-    };
+  return (
+    <AuthLayout
+      showBack={true}
+      onBack={handleBack}
+    >
+      {step === 0 && (
+        <div className="animate-fade-in">
+          <h2 className="text-2xl font-bold mb-2 text-center">Восстановить пароль</h2>
+          <p className="text-neutral-400 text-sm text-center mb-8">
+            Мы отправим на вашу почту письмо<br />для восстановления доступа
+          </p>
+          <EmailStep
+            onNext={handleEmailSubmit}
+            loading={loading}
+            emailError={emailError}
+          />
+        </div>
+      )}
 
-    return (
-        <AuthLayout
-            showBack={true}
-            onBack={handleBack}
-            title={getTitle()}
-            subtitle={getSubtitle()}
-        >
-            {step === 0 && (
-                <EmailStep
-                    onNext={handleEmailSubmit}
-                    loading={loading}
-                />
-            )}
-
-            {step === 1 && (
-                <VerificationStep
-                    email={email}
-                    onNext={handleVerificationSubmit}
-                    loading={loading}
-                />
-            )}
-
-            {step === 2 && (
-                <NewPasswordStep
-                    onNext={handlePasswordSubmit}
-                    loading={loading}
-                />
-            )}
-        </AuthLayout>
-    );
+      {step === 1 && (
+        <EmailSentStep
+          email={email}
+          maskedEmail={maskEmail(email)}
+          timer={timer}
+          loading={loading}
+          onResend={handleResend}
+        />
+      )}
+    </AuthLayout>
+  );
 };
-

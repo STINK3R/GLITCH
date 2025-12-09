@@ -1,6 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 
-export const CodeInput = ({ length = 4, onComplete }) => {
+/**
+ * CodeInput - Компонент для ввода кода подтверждения
+ * По умолчанию 6 цифр (формат xxx-xxx)
+ */
+export const CodeInput = ({ length = 6, onComplete }) => {
   const [values, setValues] = useState(Array(length).fill(""));
   const inputsRef = useRef([]);
 
@@ -28,17 +32,20 @@ export const CodeInput = ({ length = 4, onComplete }) => {
 
   const handlePaste = (e) => {
     e.preventDefault();
-    const pasteData = e.clipboardData.getData("text").slice(0, length);
-    if (!/^\d+$/.test(pasteData)) return;
+    // Удаляем все нецифровые символы (включая дефисы) и берём первые length цифр
+    const pasteData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
+    if (!pasteData) return;
 
     const newValues = [...values];
     pasteData.split("").forEach((char, i) => {
-      newValues[i] = char;
+      if (i < length) {
+        newValues[i] = char;
+      }
     });
     setValues(newValues);
     
     if (newValues.every((v) => v !== "")) {
-        onComplete(newValues.join(""));
+      onComplete(newValues.join(""));
     }
     
     // Focus last filled or first empty
@@ -48,21 +55,29 @@ export const CodeInput = ({ length = 4, onComplete }) => {
   };
 
   return (
-    <div className="flex gap-3 justify-center">
+    <div className="flex gap-2 justify-center items-center">
       {values.map((val, index) => (
-        <input
-          key={index}
-          ref={(el) => (inputsRef.current[index] = el)}
-          type="text"
-          maxLength={1}
-          value={val}
-          onChange={(e) => handleChange(index, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(index, e)}
-          onPaste={index === 0 ? handlePaste : undefined}
-          className="w-14 h-14 rounded-2xl bg-[#F5F5F5] text-center text-2xl font-semibold outline-none focus:ring-1 focus:ring-neutral-300 transition-all caret-transparent selection:bg-transparent"
-        />
+        <React.Fragment key={index}>
+          <input
+            ref={(el) => (inputsRef.current[index] = el)}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={val}
+            onChange={(e) => handleChange(index, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(index, e)}
+            onPaste={index === 0 ? handlePaste : undefined}
+            className={`
+              w-12 h-14 rounded-xl bg-[#F5F5F5] text-center text-2xl font-semibold 
+              outline-none focus:ring-2 focus:ring-neutral-300 transition-all 
+              caret-transparent selection:bg-transparent
+              ${val ? 'bg-white border border-neutral-200' : ''}
+            `}
+          />
+          {/* Разделитель после третьего элемента */}
+          {index === 2 && <span className="text-neutral-300 text-2xl mx-1">|</span>}
+        </React.Fragment>
       ))}
     </div>
   );
 };
-
