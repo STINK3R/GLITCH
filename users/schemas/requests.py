@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Literal
+from typing import Literal, Optional
 
 
 class RegisterRequest(BaseModel):
@@ -17,7 +17,8 @@ class RegisterRequest(BaseModel):
                         description="Surname must contain only Russian letters",
                         example="Иванов"
                          )
-    father_name: str = Field(
+    father_name: Optional[str] = Field(
+                        default=None,
                         min_length=2,
                         max_length=128,
                         pattern=r'^[А-Яа-яЁё\s-]+$',

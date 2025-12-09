@@ -2,8 +2,11 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from main.db.db import init_db
 from users.routers import auth
+from events.routers import events
+from main.config.settings import settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,10 +27,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-
+app.include_router(auth.router, tags=["auth"])
+app.include_router(events.router, tags=["events"])
 
 @app.get("/health")
 async def root():
     return {"message": "FastAPI Auth API",
             "status": "healthy"}
+
+
+@app.get("/media/{path:path}", response_class=FileResponse)
+async def get_media(path: str):
+    return FileResponse(settings.MEDIA_DIR / path)

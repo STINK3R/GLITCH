@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Enum, Index, String
+from sqlalchemy.orm import relationship
 
 from main.models.base import BaseModel
 from users.enums.user import UserRole
@@ -18,3 +19,5 @@ class User(BaseModel):
     role = Column(Enum(UserRole), index=True, default=UserRole.USER)
 
     hashed_password = Column(String, nullable=False)
+    
+    events = relationship("Event", secondary="event_members", back_populates="members")
