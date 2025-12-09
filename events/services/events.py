@@ -37,6 +37,8 @@ class EventsService:
             conditions.append(Event.end_date <= end_date)
         if max_members is not None:
             conditions.append(Event.max_members == max_members)
+            
+        # TODO: search by name in Event.name
         if name is not None:
             conditions.append(Event.name == name)
         if status is not None:

@@ -26,6 +26,7 @@ async def get_events_request(
     max_members: Optional[int] = None,
     name: Optional[str] = None,
     status: Optional[EventStatus] = None,
+    city: Optional[EventCity] = None,
 ) -> list[EventResponse]:
 
     if user_id == -1:
@@ -38,7 +39,8 @@ async def get_events_request(
         end_date=end_date,
         max_members=max_members,
         name=name,
-        status=status
+        status=status,
+        city=city
     )
 
     return [EventResponse.model_validate(event) for event in events]
@@ -97,7 +99,7 @@ async def join_event_request(
     return EventResponse.model_validate(event_obj)
 
 
-@router.get('events/{event_id}/leave', response_model=EventResponse, status_code=status.HTTP_200_OK)
+@router.get('/events/{event_id}/leave', response_model=EventResponse, status_code=status.HTTP_200_OK)
 async def leave_event_request(
     session: SessionDependency,
     event_id: int,
