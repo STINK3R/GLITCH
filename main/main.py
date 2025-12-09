@@ -1,14 +1,15 @@
 import logging
+
 from fastapi import FastAPI
 
 from main.db.db import init_db
 from users.routers import auth
 
-# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
 
 async def lifespan(app: FastAPI):
     await init_db()

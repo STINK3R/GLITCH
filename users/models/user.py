@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Index
+from sqlalchemy import Column, Enum, Index, String
 
 from main.models.base import BaseModel
+from users.enums.user import UserRole
 
 
 class User(BaseModel):
@@ -14,5 +15,6 @@ class User(BaseModel):
     surname = Column(String(128), index=True)
     father_name = Column(String(128), index=True)
     email = Column(String(128), index=True, unique=True)
+    role = Column(Enum(UserRole), index=True, default=UserRole.USER)
 
     hashed_password = Column(String, nullable=False)

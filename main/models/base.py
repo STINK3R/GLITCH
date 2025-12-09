@@ -1,9 +1,10 @@
-from sqlalchemy import Column, BigInteger, DateTime, func
+from sqlalchemy import BigInteger, Column, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
-class BaseModel(Base):
+
+class BaseModel(Base):  # type: ignore[misc, valid-type]
     __abstract__ = True
 
     id = Column(BigInteger, primary_key=True, index=True)

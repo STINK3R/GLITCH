@@ -1,20 +1,22 @@
 from fastapi import APIRouter, Header, HTTPException, status
 
 from main.db.db import SessionDependency
-from users.schemas.requests import (AuthRequest, 
-                                    RegisterRequest, 
-                                    RegisterConfirmRequest,
-                                    ResetPasswordRequest,
-                                    ResetPasswordApplyRequest,
-                                    )
+from users.schemas.requests import (
+    AuthRequest,
+    RegisterConfirmRequest,
+    RegisterRequest,
+    ResetPasswordApplyRequest,
+    ResetPasswordRequest,
+)
 from users.schemas.responses import MessageResponse, TokenResponse
 from users.services.auth import AuthService
-from users.services.users import UsersService
 from users.services.email import EmailService
+from users.services.users import UsersService
 
 router = APIRouter()
 
 user_verification_codes = {}
+
 
 @router.post("/register/request", response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def register_request(request: RegisterRequest, session: SessionDependency):
@@ -26,29 +28,32 @@ async def register_request(request: RegisterRequest, session: SessionDependency)
         )
 
     if await UsersService.user_exists(
-        session=session, 
+        session=session,
         email=request.email
-        ):
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists"
         )
 
+    verification_code = AuthService.generate_verification_code()
+
+    # TODO: Make background task for sending email
     email_sent = await EmailService.send_verification_email(
-        email=request.email, 
-        verification_code='123456'
-        )
+        email=request.email,
+        verification_code=verification_code
+    )
 
-    # TODO: Save user to dictionary
-
+    # TODO: Make secure dictionary
     user_verification_codes[request.email] = {
-        'code': '123456',
+        'code': AuthService.get_hash(verification_code),
         'password': request.password,
         'repeat_password': request.repeat_password,
         'name': request.name,
         'surname': request.surname,
         'father_name': request.father_name,
         'email': request.email,
+        'attempts': 3,
     }
     if not email_sent:
         raise HTTPException(
@@ -61,11 +66,30 @@ async def register_request(request: RegisterRequest, session: SessionDependency)
 
 @router.post("/register/confirm", response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def register_confirm_request(request: RegisterConfirmRequest, session: SessionDependency):
-    
-    #TODO Verify email
-    #TODO Activate user
 
     user_dict = user_verification_codes.get(request.email)
+
+    if not user_dict:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found"
+        )
+
+    if user_dict['attempts'] <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many attempts"
+        )
+
+    if not AuthService.verify_hash(request.code, user_dict['code']):
+        user_dict['attempts'] -= 1
+        if user_dict['attempts'] <= 0:
+            user_verification_codes.pop(request.email)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification code"
+
+        )
 
     user = RegisterRequest(
         name=user_dict['name'],
@@ -76,29 +100,28 @@ async def register_confirm_request(request: RegisterConfirmRequest, session: Ses
         repeat_password=user_dict['repeat_password'],
     )
 
-    if not user_dict:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not found"
-        )
-    
     await UsersService.create_user(
-        session=session, 
+        session=session,
         new_user=user
-        )
+    )
+
+    # TODO: Make background task for sending email
+    await EmailService.send_welcome_email(
+        email=user_dict['email']
+    )
+
+    user_verification_codes.pop(request.email)
 
     return MessageResponse(message="User created successfuly")
 
 
-
 @router.post("/auth", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def auth_request(request: AuthRequest, session: SessionDependency):
-
     is_valid, user_id = await UsersService.verify_user_password(
-        session=session, 
-        email=request.email, 
+        session=session,
+        email=request.email,
         password=request.password
-        )
+    )
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -118,8 +141,7 @@ async def auth_request(request: AuthRequest, session: SessionDependency):
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def refresh_request(session: SessionDependency, refresh_token: str = Header(...)):
-
-    payload = AuthService.verify_token(refresh_token=refresh_token, token_type="refresh")
+    payload = AuthService.verify_token(token=refresh_token, token_type="refresh")
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -129,9 +151,9 @@ async def refresh_request(session: SessionDependency, refresh_token: str = Heade
     email = payload.get("sub")
     user_id = payload.get("id")
     if not email or not user_id or not await UsersService.user_exists(
-        session=session, 
+        session=session,
         email=email
-        ):
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
@@ -148,41 +170,66 @@ async def refresh_request(session: SessionDependency, refresh_token: str = Heade
     )
 
 
-@router.get('/reset-password', response_model=MessageResponse, status_code=status.HTTP_200_OK)
+@router.post('/reset-password', response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def reset_password_request(email: ResetPasswordRequest, session: SessionDependency):
     if not await UsersService.user_exists(
-        session=session, 
+        session=session,
         email=email.email
-        ):
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
         )
 
-    # TODO: generate reset token
-    # TODO: Send email with link to reset password
+    reset_token = AuthService.generate_reset_token(email.email)
+
+    # TODO: Make background task for sending email
+    await EmailService.send_password_reset_email(
+        email=email.email,
+        reset_token=reset_token,
+    )
 
     return MessageResponse(message="Password reset email sent")
 
 
 @router.post('/reset-password/apply', response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def reset_password_apply_request(data: ResetPasswordApplyRequest, session: SessionDependency):
-    # TODO Verify token
-    # TODO Get email from token
-    email = ''
+
+    auth_payload = AuthService.verify_token(token=data.reset_token, token_type="reset")
+    if not auth_payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid reset token"
+        )
+
+    email = auth_payload.get("sub")
+    if not email or not isinstance(email, str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid reset token"
+        )
+
     if not await UsersService.user_exists(
-        session=session, 
+        session=session,
         email=email
-        ):
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
         )
 
     await UsersService.reset_password(
-        session=session, 
-        email=email, 
+        session=session,
+        email=email,
         new_password=data.password
-        )
+    )
+
+    # TODO: Make background task for sending email
+    await EmailService.send_password_reset_success_email(
+        email=email
+    )
 
     return MessageResponse(message="Password reset successfuly")
+
+
+# TODO: Add reset email route
