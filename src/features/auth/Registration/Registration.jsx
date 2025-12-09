@@ -16,6 +16,7 @@ export const Register = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [step, setStep] = useState(0); // 0: Credentials, 2: Details, 1: Verification
+  const [direction, setDirection] = useState("forward"); // forward или back для анимации
 
   const [loading, setLoading] = useState(false);
   const [credentialsError, setCredentialsError] = useState(null); // Ошибка для поля email
@@ -49,6 +50,7 @@ export const Register = () => {
   const handleCredentialsSubmit = (data) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setCredentialsError(null);
+    setDirection("forward");
     setStep(2);
   };
 
@@ -64,6 +66,7 @@ export const Register = () => {
     setLoading(true);
     try {
       await sendRegisterCode(fullData);
+      setDirection("forward");
       setStep(1);
     } catch (e) {
       console.error(e);
@@ -96,10 +99,12 @@ export const Register = () => {
       try {
         await login(formData.email, formData.password);
         toast.success("Регистрация успешна!");
-        navigate("/");
+        navigate("/events");
       } catch (loginError) {
-        toast.info("Регистрация завершена. Войдите в систему.");
-        navigate("/login");
+        // Даже если автологин не удался, перенаправляем на события
+        // Пользователь сможет войти позже
+        toast.success("Регистрация завершена!");
+        navigate("/events");
       }
     } catch (e) {
       toast.error("Неверный код подтверждения");
@@ -110,9 +115,15 @@ export const Register = () => {
 
   const handleBack = () => {
     setCredentialsError(null);
+    setDirection("back");
     if (step === 2) setStep(0);
     else if (step === 1) setStep(2);
     else navigate(-1);
+  };
+
+  // Получаем класс анимации в зависимости от направления
+  const getAnimationClass = () => {
+    return direction === "forward" ? "animate-step-in" : "animate-step-back";
   };
 
   return (
@@ -121,36 +132,42 @@ export const Register = () => {
       onBack={handleBack}
     >
       {step === 0 && (
-        <CredentialsStep
-          onNext={handleCredentialsSubmit}
-          loading={loading}
-          emailError={credentialsError}
-          initialData={{
-            email: formData.email,
-            password: formData.password,
-            confirmPassword: formData.confirmPassword,
-          }}
-        />
+        <div key="step-0" className={getAnimationClass()}>
+          <CredentialsStep
+            onNext={handleCredentialsSubmit}
+            loading={loading}
+            emailError={credentialsError}
+            initialData={{
+              email: formData.email,
+              password: formData.password,
+              confirmPassword: formData.confirmPassword,
+            }}
+          />
+        </div>
       )}
 
       {step === 2 && (
-        <DetailsStep
-          onNext={handleDetailsSubmit}
-          loading={loading}
-          initialData={{
-            name: formData.name,
-            surname: formData.surname,
-            patronymic: formData.patronymic,
-          }}
-        />
+        <div key="step-2" className={getAnimationClass()}>
+          <DetailsStep
+            onNext={handleDetailsSubmit}
+            loading={loading}
+            initialData={{
+              name: formData.name,
+              surname: formData.surname,
+              patronymic: formData.patronymic,
+            }}
+          />
+        </div>
       )}
 
       {step === 1 && (
-        <VerificationStep
-          email={formData.email}
-          onNext={handleVerificationSubmit}
-          loading={loading}
-        />
+        <div key="step-1" className={getAnimationClass()}>
+          <VerificationStep
+            email={formData.email}
+            onNext={handleVerificationSubmit}
+            loading={loading}
+          />
+        </div>
       )}
     </AuthLayout>
   );

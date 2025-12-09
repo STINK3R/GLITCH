@@ -94,17 +94,17 @@ export const CredentialsStep = ({ onNext, loading, emailError, initialData = {} 
   return (
     <div className="animate-fade-in">
       {/* Toggle Вход / Регистрация */}
-      <div className="bg-[#F5F5F5] p-1 rounded-xl flex mb-8">
+      <div className="bg-[#F5F5F5] p-1 rounded-[20px] flex mb-8">
         <button
           type="button"
           onClick={handleNavigateToLogin}
-          className="flex-1 py-2.5 text-sm font-medium text-neutral-400 rounded-lg transition-all hover:text-neutral-600"
+          className="flex-1 h-12 flex items-center justify-center text-sm font-medium text-neutral-500 rounded-[20px] transition-all hover:text-neutral-700"
         >
           Вход
         </button>
         <button
           type="button"
-          className="flex-1 py-2.5 text-sm font-medium bg-white shadow-sm rounded-lg text-neutral-900 transition-all"
+          className="flex-1 h-12 flex items-center justify-center text-sm font-medium bg-[#E3E3E3] rounded-[20px] text-neutral-900 transition-all"
         >
           Регистрация
         </button>
@@ -149,11 +149,11 @@ export const CredentialsStep = ({ onNext, loading, emailError, initialData = {} 
 
         <p className="text-xs text-center text-neutral-400 mt-6 leading-relaxed px-2">
           Продолжая, вы соглашаетесь с{" "}
-          <Link to="/terms" className="text-[#EE2C34] hover:underline">
+          <Link to="/terms" className="text-[#EE2C34] hover:text-[#D42930] transition-colors duration-300">
             нашими Условиями использования
           </Link>{" "}
           и{" "}
-          <Link to="/privacy" className="text-[#EE2C34] hover:underline">
+          <Link to="/privacy" className="text-[#EE2C34] hover:text-[#D42930] transition-colors duration-300">
             Политикой конфиденциальности
           </Link>
         </p>

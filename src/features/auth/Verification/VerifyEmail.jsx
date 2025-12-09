@@ -35,8 +35,8 @@ export const VerifyEmail = () => {
         }
         
         setStatus("success");
-        // Перенаправляем на вход через 2 секунды
-        setTimeout(() => navigate("/login"), 2000);
+        // Перенаправляем на главную страницу событий через 2 секунды
+        setTimeout(() => navigate("/events"), 2000);
       } catch (e) {
         console.error("Verification error:", e);
         setStatus("error");
@@ -70,7 +70,7 @@ export const VerifyEmail = () => {
             </div>
             <h2 className="text-2xl font-bold mb-2">Почта подтверждена!</h2>
             <p className="text-neutral-400 text-sm">
-              Сейчас вы будете перенаправлены на вход...
+              Сейчас вы будете перенаправлены на главную...
             </p>
           </div>
         )}
