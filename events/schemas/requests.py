@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, model_validator
 
 from events.enums.events import EventCity
-
+from events.enums.events import EventType
 
 class EventRequest(BaseModel):
     name: str
@@ -16,6 +16,7 @@ class EventRequest(BaseModel):
     pay_data: Optional[str] = None
     max_members: Optional[int] = None
     city: Optional[EventCity] = None
+    type: EventType
 
     @model_validator(mode='after')
     def validate_dates(self) -> 'EventRequest':

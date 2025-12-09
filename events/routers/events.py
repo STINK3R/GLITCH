@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, File, status
 from fastapi.datastructures import UploadFile
 
-from events.enums.events import EventCity, EventStatus
+from events.enums.events import EventCity, EventStatus, EventType
 from events.schemas.requests import EventRequest, EventUpdateRequest
 from events.schemas.responses import EventResponse
 from events.services.events import EventsService
@@ -26,6 +26,7 @@ async def get_events_request(
     end_date: Optional[datetime] = None,
     max_members: Optional[int] = None,
     name: Optional[str] = None,
+    type: Optional[EventType] = None,
     status: Optional[EventStatus] = None,
     city: Optional[EventCity] = None,
 ) -> list[EventResponse]:
@@ -40,6 +41,7 @@ async def get_events_request(
         end_date=end_date,
         max_members=max_members,
         name=name,
+        type=type,
         status=status,
         city=city,
         is_admin=user.role == UserRole.ADMIN
@@ -66,6 +68,7 @@ async def create_event_request(
     location: Optional[str] = Body(None),
     pay_data: Optional[str] = Body(None),
     max_members: Optional[int] = Body(None),
+    type: EventType = Body(...),
     city: EventCity = Body(...),
     # admin: User = Depends(admin_dependency),
     photo: UploadFile = File(...)
@@ -80,6 +83,7 @@ async def create_event_request(
         location=location,
         pay_data=pay_data,
         max_members=max_members,
+        type=type,
         city=city
     )
 

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from events.enums.events import EventCity, EventStatus
+from events.enums.events import EventCity, EventStatus, EventType
 from events.models.events import Event, EventMembers
 from events.schemas.requests import EventRequest, EventUpdateRequest
 from users.models.user import User
@@ -21,6 +21,7 @@ class EventsService:
         end_date: Optional[datetime] = None,
         max_members: Optional[int] = None,
         name: Optional[str] = None,
+        type: Optional[EventType] = None,
         status: Optional[EventStatus] = None,
         city: Optional[EventCity] = None,
         is_admin: bool = False,
@@ -43,6 +44,8 @@ class EventsService:
         # TODO: search by name in Event.name
         if name is not None:
             conditions.append(Event.name == name)
+        if type is not None:
+            conditions.append(Event.type == type)
         if status is not None:
             conditions.append(Event.status == status)
         if city is not None:
@@ -87,6 +90,7 @@ class EventsService:
             pay_data=event.pay_data,
             max_members=event.max_members,
             city=event.city,
+            type=event.type,
         )
         session.add(event)
         await session.commit()
