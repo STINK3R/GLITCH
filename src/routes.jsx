@@ -1,13 +1,14 @@
-/**
- * Конфигурация маршрутов приложения
- */
-
 import { Route, Routes, Navigate } from "react-router-dom";
 import { Login } from "./features/auth/Login/Login.jsx";
 import { Register } from "./features/auth/Registration/Registration.jsx";
+import { PasswordRecovery } from "./features/auth/Recovery/PasswordRecovery.jsx";
+import { ResetPasswordPage } from "./features/auth/Recovery/ResetPasswordPage.jsx";
+import { VerifyEmail } from "./features/auth/Verification/VerifyEmail.jsx";
 import { EventsPage } from "./pages/Events/EventsPage.jsx";
 import { EventDetailPage } from "./pages/Events/EventDetailPage.jsx";
-import { ProtectedRoute } from "./components/layouts/ProtectedRotes.jsx";
+import { TermsPage } from "./pages/Legal/TermsPage.jsx";
+import { PrivacyPage } from "./pages/Legal/PrivacyPage.jsx";
+import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
 
 export default function AppRoutes() {
   return (
@@ -18,6 +19,15 @@ export default function AppRoutes() {
       {/* Авторизация */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/recovery" element={<PasswordRecovery />} />
+      
+      {/* Ссылки из писем */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+
+      {/* Правовые документы */}
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Защищённые маршруты - события */}
       <Route
@@ -59,7 +69,7 @@ export default function AppRoutes() {
 function AdminPlaceholder() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
-      <div className="text-center">
+      <div className="text-center animate-fade-in">
         <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
           <svg
             className="w-10 h-10 text-amber-600"

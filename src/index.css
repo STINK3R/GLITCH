@@ -1,13 +1,53 @@
 @import "tailwindcss";
 
 /* ===========================================
-   Базовые переменные и стили для приложения "Ябуду"
+   Подключение шрифта Graphik LCG
+   =========================================== */
+
+@font-face {
+  font-family: 'Graphik LCG';
+  src: url('/fonts/GraphikLCG-Regular.woff2') format('woff2'),
+       url('/fonts/GraphikLCG-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik LCG';
+  src: url('/fonts/GraphikLCG-Medium.woff2') format('woff2'),
+       url('/fonts/GraphikLCG-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik LCG';
+  src: url('/fonts/GraphikLCG-Semibold.woff2') format('woff2'),
+       url('/fonts/GraphikLCG-Semibold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik LCG';
+  src: url('/fonts/GraphikLCG-Bold.woff2') format('woff2'),
+       url('/fonts/GraphikLCG-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ===========================================
+   Базовые переменные и стили для приложения "Слёт"
    =========================================== */
 
 :root {
   /* Основные цвета */
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
+  --color-primary: #EE2C34;
+  --color-primary-hover: #D42930;
   --color-secondary: #4f46e5;
   
   /* Цвета текста */
@@ -19,9 +59,11 @@
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #fafafa;
   --color-bg-tertiary: #f5f5f5;
+
+  --main-color: #EE2C34;
   
   /* Системные настройки */
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: 'Graphik LCG', "Inter", system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -44,6 +86,7 @@ body {
   min-height: 100vh;
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
+  font-family: 'Graphik LCG', "Inter", system-ui, -apple-system, sans-serif;
 }
 
 /* ===========================================
@@ -51,6 +94,7 @@ body {
    =========================================== */
 
 h1, h2, h3, h4, h5, h6 {
+  font-family: 'Graphik LCG', "Inter", system-ui, -apple-system, sans-serif;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -60,13 +104,8 @@ h2 { font-size: 1.5rem; }
 h3 { font-size: 1.25rem; }
 
 a {
-  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.2s ease;
-}
-
-a:hover {
-  color: var(--color-primary-hover);
 }
 
 /* ===========================================
@@ -74,12 +113,12 @@ a:hover {
    =========================================== */
 
 input, textarea, select {
-  font-family: inherit;
+  font-family: 'Graphik LCG', "Inter", system-ui, -apple-system, sans-serif;
   font-size: 1rem;
 }
 
 button {
-  font-family: inherit;
+  font-family: 'Graphik LCG', "Inter", system-ui, -apple-system, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -99,7 +138,7 @@ button {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Масштабирование при появлении */
@@ -115,14 +154,14 @@ button {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.2s ease-out;
+  animation: scaleIn 0.3s ease-out;
 }
 
 /* Появление снизу */
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -131,7 +170,55 @@ button {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Появление сверху (для тостов) */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Появление слева */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Появление справа */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Пульсация для скелетонов */
@@ -160,6 +247,53 @@ button {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Bounce эффект */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 0.5s ease-in-out;
+}
+
+/* ===========================================
+   Переходы между страницами
+   =========================================== */
+
+.page-transition {
+  animation: pageEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Переход между табами (вход/регистрация) */
+.tab-content {
+  animation: tabFade 0.25s ease-out;
+}
+
+@keyframes tabFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ===========================================
@@ -221,6 +355,15 @@ button {
   backdrop-filter: blur(4px);
 }
 
+/* Кнопка с анимацией нажатия */
+.btn-press {
+  transition: transform 0.1s ease;
+}
+
+.btn-press:active {
+  transform: scale(0.98);
+}
+
 /* ===========================================
    Адаптивность
    =========================================== */
@@ -255,16 +398,41 @@ button {
   margin-bottom: 0.25em;
 }
 
+.prose h2 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose h3 {
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+
 /* ===========================================
    Фокус и доступность
    =========================================== */
 
 :focus-visible {
-  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 /* Скрытие outline для мыши */
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+/* ===========================================
+   Стили для страницы авторизации - убираем моргание
+   =========================================== */
+
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-form-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
