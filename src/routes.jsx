@@ -2,6 +2,8 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import { Login } from "./features/auth/Login/Login.jsx";
 import { Register } from "./features/auth/Registration/Registration.jsx";
 import { PasswordRecovery } from "./features/auth/Recovery/PasswordRecovery.jsx";
+import { ResetPasswordPage } from "./features/auth/Recovery/ResetPasswordPage.jsx";
+import { VerifyEmail } from "./features/auth/Verification/VerifyEmail.jsx";
 import { EventsPage } from "./pages/Events/EventsPage.jsx";
 import { EventDetailPage } from "./pages/Events/EventDetailPage.jsx";
 import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
@@ -16,6 +18,10 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/recovery" element={<PasswordRecovery />} />
+      
+      {/* Ссылки из писем */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* Защищённые маршруты - события */}
       <Route

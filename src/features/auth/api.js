@@ -19,12 +19,12 @@ export const authApi = {
      * Регистрация нового пользователя
      * POST /api/register
      */
-    register: (username, password, repeat_password) => http("/api/register", {
+    register: (username, password, repeat_password) => http("/api/register/request", {
         method: "POST",
-        body: JSON.stringify({ 
-            username, 
-            password, 
-            repeat_password 
+        body: JSON.stringify({
+            username,
+            password,
+            repeat_password
         }),
         skipAuth: true
     }),

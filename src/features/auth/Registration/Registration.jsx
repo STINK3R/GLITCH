@@ -12,7 +12,7 @@ export const Register = () => {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,11 +27,25 @@ export const Register = () => {
     setLoading(true);
     setError("");
     try {
-      // Имитация отправки кода (API не поддерживает реальную отправку)
-      await sendRegisterCode(data.email);
+      // Выполняем реальную регистрацию на первом шаге,
+      // чтобы бэкенд отправил письмо с подтверждением.
+      const fullData = {
+        email: data.email,
+        password: data.password,
+        confirmPassword: data.confirmPassword
+      };
+
+      await register(fullData);
+
+      // Если регистрация успешна, переходим к шагу подтверждения (или просто уведомляем)
       setStep(1);
     } catch (e) {
-      setError(e.message || "Ошибка отправки кода. Проверьте email.");
+      let msg = "Ошибка регистрации";
+      if (e.message && e.message.includes("detail")) {
+        msg = "Пользователь с таким email уже существует или данные некорректны";
+      }
+      setError(msg);
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -41,8 +55,11 @@ export const Register = () => {
     setLoading(true);
     setError("");
     try {
-      // Имитация проверки кода
-      await verifyCode(formData.email, code);
+      // Так как API не предоставляет отдельного метода для проверки кода
+      // (верификация идет по ссылке из письма), мы здесь просто симулируем проверку
+      // для UI флоу, либо можно убрать этот шаг, если он не нужен.
+      // Но по дизайну он есть.
+      await new Promise(r => setTimeout(r, 1000));
       setStep(2);
     } catch (e) {
       alert(e.message || "Неверный код");
@@ -55,30 +72,14 @@ export const Register = () => {
     setLoading(true);
     setError("");
     try {
-      // Вызываем реальный endpoint регистрации
-      // Игнорируем details (Имя, Фамилия) так как API их не принимает
-      // Передаем email (как username), пароль и подтверждение пароля
-      const fullData = { 
-        email: formData.email,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword
-      };
-      
-      await register(fullData);
-      
-      // Можно сохранить имя/фамилию в локальное хранилище или сделать апдейт профиля, если будет API
-      // localStorage.setItem('temp_user_details', JSON.stringify(details));
-      
+      // Данные о пользователе (Имя, Фамилия) пока просто сохраняем или пропускаем,
+      // так как основной запрос регистрации уже прошел.
+      // Если появится API профиля, вызовем его здесь.
+      // await updateProfile(details);
+
       navigate("/login");
     } catch (e) {
-      // Обработка ошибок валидации от API (422)
-      // Если придет массив ошибок detail
-      let msg = "Ошибка регистрации";
-      if (e.message && e.message.includes("detail")) {
-          msg = "Ошибка валидации данных";
-      }
-      setError(msg);
-      console.error(e);
+      setError(e.message || "Ошибка сохранения данных");
     } finally {
       setLoading(false);
     }
@@ -90,30 +91,30 @@ export const Register = () => {
   };
 
   return (
-    <AuthLayout 
-      showBack={step > 0} 
+    <AuthLayout
+      showBack={step > 0}
       onBack={handleBack}
     >
       {step === 0 && (
-        <CredentialsStep 
-          onNext={handleCredentialsSubmit} 
-          loading={loading} 
-          error={error} 
+        <CredentialsStep
+          onNext={handleCredentialsSubmit}
+          loading={loading}
+          error={error}
         />
       )}
-      
+
       {step === 1 && (
-        <VerificationStep 
-          email={formData.email} 
-          onNext={handleVerificationSubmit} 
-          loading={loading} 
+        <VerificationStep
+          email={formData.email}
+          onNext={handleVerificationSubmit}
+          loading={loading}
         />
       )}
-      
+
       {step === 2 && (
-        <DetailsStep 
-          onNext={handleDetailsSubmit} 
-          loading={loading} 
+        <DetailsStep
+          onNext={handleDetailsSubmit}
+          loading={loading}
         />
       )}
     </AuthLayout>
