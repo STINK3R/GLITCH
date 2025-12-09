@@ -48,14 +48,14 @@ class UsersService:
         return user is not None
 
     @staticmethod
-    async def verify_user_password(session: AsyncSession, email: str, password: str) -> tuple[bool, int, UserRole]:
+    async def verify_user_password(session: AsyncSession, email: str, password: str) -> User:
         user = await UsersService.get_user_by_email(session, email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User not found"
             )
-        return AuthService.verify_hash(password, user.hashed_password), user.id, user.role
+        return AuthService.verify_hash(password, user.hashed_password), user
 
     @staticmethod
     async def reset_password(session: AsyncSession, email: str, new_password: str):

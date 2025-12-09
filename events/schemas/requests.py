@@ -22,3 +22,16 @@ class EventRequest(BaseModel):
         if self.start_date >= self.end_date:
             raise ValueError("Start date must be before end date")
         return self
+
+
+class EventUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    short_description: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    pay_data: Optional[str] = None
+    max_members: Optional[int] = None
+    city: Optional[EventCity] = None
+    image_url: Optional[str] = None

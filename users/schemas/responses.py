@@ -1,10 +1,7 @@
 from pydantic import BaseModel, ConfigDict
+from typing import Optional
 
 from users.enums.user import UserRole
-
-
-class MessageResponse(BaseModel):
-    message: str
 
 
 class UserResponse(BaseModel):
@@ -22,4 +19,4 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     type: str = "Bearer"
-    user: UserResponse
+    user: Optional[UserResponse] = None

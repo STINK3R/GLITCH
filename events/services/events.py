@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from events.enums.events import EventCity, EventStatus
 from events.models.events import Event, EventMembers
-from events.schemas.requests import EventRequest
+from events.schemas.requests import EventRequest, EventUpdateRequest
 from users.models.user import User
 
 
@@ -23,6 +23,7 @@ class EventsService:
         name: Optional[str] = None,
         status: Optional[EventStatus] = None,
         city: Optional[EventCity] = None,
+        is_admin: bool = False,
     ):
         query = select(Event).options(selectinload(Event.members))
 
@@ -30,7 +31,8 @@ class EventsService:
             query = query.join(EventMembers).where(EventMembers.user_id == user_id)
 
         conditions = []
-
+        if not is_admin:
+            conditions.append(Event.status != EventStatus.CANCELLED)
         if start_date is not None:
             conditions.append(Event.start_date >= start_date)
         if end_date is not None:
@@ -45,6 +47,7 @@ class EventsService:
             conditions.append(Event.status == status)
         if city is not None:
             conditions.append(Event.city == city)
+
 
         if conditions:
             query = query.where(*conditions)
@@ -111,7 +114,13 @@ class EventsService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User already joined the event"
             )
-
+        
+        if event.max_members is not None and len(event.members) >= event.max_members:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Event is full"
+            )
+        
         event.members.append(user)
         await session.commit()
 
@@ -147,3 +156,40 @@ class EventsService:
             .where(Event.id == event.id)
         )
         return result.scalar_one()
+
+    @staticmethod
+    async def delete_event(session: AsyncSession, event_id: int) -> bool:
+        event = await EventsService.get_event_by_id(session, event_id)
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+        members = event.members
+        for member in members:
+            await EventsService.leave_event(session, event_id, member)
+        await session.delete(event)
+        await session.commit()
+        return True
+    
+    @staticmethod
+    async def update_event(session: AsyncSession, event_id: int, event_request: EventUpdateRequest, new_image_url: Optional[str] = None) -> Event:
+        event = await EventsService.get_event_by_id(session, event_id)
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+        event.name = event_request.name if event_request.name else event.name
+        event.start_date = EventsService._to_naive_datetime(event_request.start_date) if event_request.start_date else event.start_date
+        event.end_date = EventsService._to_naive_datetime(event_request.end_date) if event_request.end_date else event.end_date
+        event.short_description = event_request.short_description if event_request.short_description else event.short_description
+        event.description = event_request.description if event_request.description else event.description
+        event.pay_data = event_request.pay_data if event_request.pay_data else event.pay_data
+        event.max_members = event_request.max_members if event_request.max_members else event.max_members
+        event.city = event_request.city if event_request.city else event.city
+        event.location = event_request.location if event_request.location else event.location
+        event.image_url = new_image_url if new_image_url else event.image_url
+        await session.commit()
+        await session.refresh(event)
+        return event

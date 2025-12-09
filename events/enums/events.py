@@ -2,9 +2,25 @@ from enum import Enum
 
 
 class EventStatus(Enum):
+    COMMING_SOON = "coming soon"
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+
+
+class EventType(Enum):
+    BIRTHDAY = "День рождения"
+    PARTY = "Вечеринка"
+    MEETING = "Встреча"
+    TRAINING = "Тренинг"
+    CONFERENCE = "Конференция"
+    WORKSHOP = "Мастер-класс"
+    SEMINAR = "Семинар"
+    CONCERT = "Концерт"
+    FESTIVAL = "Фестиваль"
+    EXCURSION = "Экскурсия"
+    TOUR = "Тур"
+    OTHER = "Другое"
 
 
 class EventCity(Enum):

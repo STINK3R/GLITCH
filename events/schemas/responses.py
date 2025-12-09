@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from events.enums.events import EventStatus
 from users.schemas.responses import UserResponse
 
 
@@ -18,4 +19,6 @@ class EventResponse(BaseModel):
     location: str | None
     pay_data: str | None
     max_members: int | None
+    status: EventStatus
     members: list[UserResponse]
+    is_user_in_event: bool = False
