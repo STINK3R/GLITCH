@@ -1,9 +1,11 @@
-from sqlalchemy import Column, DateTime, Enum, String, ForeignKey, Index, Integer
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
-from main.models.base import BaseModel
-from events.enums.events import EventStatus
 
-class EventMembers(BaseModel):
+from events.enums.events import EventCity, EventStatus
+from main.models.base import Base, BaseModel
+
+
+class EventMembers(Base):
     __tablename__ = "event_members"
     __table_args__ = (
         Index("idx_event_members_event_id", "event_id"),
@@ -22,6 +24,7 @@ class Event(BaseModel):
         Index("idx_event_start_date", "start_date"),
         Index("idx_event_end_date", "end_date"),
         Index("idx_event_status", "status"),
+        Index("idx_event_city", "city"),
     )
 
     name = Column(String(128), nullable=False, index=True)
@@ -30,12 +33,15 @@ class Event(BaseModel):
     start_date = Column(DateTime, nullable=True, index=True)
     end_date = Column(DateTime, nullable=False, index=True)
 
-    short_description = Column(String(128), nullable=False, index=True)
+    short_description = Column(String(128), nullable=True, index=True)
     description = Column(String(1024), nullable=False, index=True)
 
     pay_data = Column(String(2048), nullable=True)
 
     max_members = Column(Integer, nullable=True)
-    
+
+    city = Column(Enum(EventCity), nullable=True, index=True)
+    location = Column(String(512), nullable=True)
+
     members = relationship("User", secondary=EventMembers.__table__, back_populates="events")
     status = Column(Enum(EventStatus), index=True, default=EventStatus.ACTIVE)

@@ -14,10 +14,10 @@ class User(BaseModel):
 
     name = Column(String(128), index=True)
     surname = Column(String(128), index=True)
-    father_name = Column(String(128), index=True)
+    father_name = Column(String(128), index=True, nullable=True)
     email = Column(String(128), index=True, unique=True)
     role = Column(Enum(UserRole), index=True, default=UserRole.USER)
 
     hashed_password = Column(String, nullable=False)
-    
+
     events = relationship("Event", secondary="event_members", back_populates="members")

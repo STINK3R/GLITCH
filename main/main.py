@@ -3,15 +3,17 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from main.db.db import init_db
-from users.routers import auth
+
 from events.routers import events
 from main.config.settings import settings
+from main.db.db import init_db
+from users.routers import auth
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
 
 async def lifespan(app: FastAPI):
     await init_db()
@@ -29,6 +31,7 @@ app.add_middleware(
 
 app.include_router(auth.router, tags=["auth"])
 app.include_router(events.router, tags=["events"])
+
 
 @app.get("/health")
 async def root():

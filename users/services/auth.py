@@ -2,6 +2,7 @@ import random
 import string
 from datetime import datetime, timedelta
 from typing import Optional
+
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
@@ -27,7 +28,6 @@ class AuthService:
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-        """Создание access токена"""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
