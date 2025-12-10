@@ -389,16 +389,10 @@ class EventsService:
         return result.scalar_one()
     
     @staticmethod
-    async def get_event_with_comments_and_members(session: AsyncSession, event_id: int) -> Event:
+    async def get_comments_for_event(session: AsyncSession, event_id: int) -> List[EventComments]:
         result = await session.execute(
-            select(Event)
-            .options(selectinload(Event.comments), selectinload(Event.members))
-            .where(Event.id == event_id)
+            select(EventComments)
+            .options(selectinload(EventComments.user))
+            .where(EventComments.event_id == event_id)
         )
-        event = result.scalar_one_or_none()
-        if not event:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Event not found"
-            )
-        return event
+        return result.scalars().all()
