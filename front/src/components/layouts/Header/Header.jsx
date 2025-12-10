@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore, USER_ROLES } from "../../../features/auth/AuthStore";
 import { useEventsStore, EVENT_TABS } from "../../../features/events/EventsStore";
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from "../../../features/notifications/useNotifications";
@@ -13,6 +13,7 @@ import searchIcon from "/icons/search-normal.svg";
 import heartIcon from "/icons/heart.svg";
 import bellIcon from "/icons/notification.svg";
 import { NotificationsPanel, NOTIFICATION_TYPES } from "../../ui/NotificationsPanel";
+import { UserProfileModal } from "../../ui/UserProfileModal";
 
 // Высота всех элементов в хедере
 const HEADER_ELEMENT_HEIGHT = 48;
@@ -85,6 +86,9 @@ export default function Header() {
   
   // Состояние для панели уведомлений
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  
+  // Состояние для модального окна профиля
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   // Получаем уведомления с API
   const { data: rawNotifications = [], isLoading: isLoadingNotifications } = useNotifications();
@@ -160,7 +164,10 @@ export default function Header() {
         <div className="flex items-center">
           {/* 1. Аватар пользователя (только на мобильных) */}
           {token && (
-            <Link to="/profile" className="shrink-0 md:hidden mr-3">
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="shrink-0 md:hidden mr-3"
+            >
               <div 
                 className="bg-gradient-to-br from-neutral-200 to-neutral-300 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm w-10 h-10"
               >
@@ -172,7 +179,7 @@ export default function Header() {
                   </span>
                 )}
               </div>
-            </Link>
+            </button>
           )}
 
           {/* 2. Дата (только на мобильных) или Логотип (на десктопе) */}
@@ -290,9 +297,12 @@ export default function Header() {
                 </div>
 
                 {/* Аватар пользователя (скрыт на мобильных - показан слева) */}
-                <Link to="/profile" className="hidden md:block shrink-0 ml-[10px]">
+                <button 
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="hidden md:block shrink-0 ml-[10px]"
+                >
                   <div 
-                    className="bg-gradient-to-br from-neutral-200 to-neutral-300 rounded-[20px] flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm"
+                    className="bg-gradient-to-br from-neutral-200 to-neutral-300 rounded-[20px] flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm hover:ring-neutral-300 transition-all"
                     style={{ height: HEADER_ELEMENT_HEIGHT, width: HEADER_ELEMENT_HEIGHT }}
                   >
                     {user?.avatar ? (
@@ -303,7 +313,13 @@ export default function Header() {
                       </span>
                     )}
                   </div>
-                </Link>
+                </button>
+                
+                {/* Модальное окно профиля */}
+                <UserProfileModal
+                  isOpen={isProfileModalOpen}
+                  onClose={() => setIsProfileModalOpen(false)}
+                />
               </>
             ) : (
               <>

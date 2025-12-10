@@ -15,9 +15,19 @@ function buildQueryString(filters = {}) {
   const params = new URLSearchParams();
   
   // Все фильтры передаём как есть, если они заданы
+  // Массивы разворачиваем в повторяющиеся параметры: type=A&type=B
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
-      params.append(key, value);
+      if (Array.isArray(value)) {
+        // Каждый элемент массива добавляем как отдельный параметр
+        value.forEach((item) => {
+          if (item !== undefined && item !== null && item !== "") {
+            params.append(key, item);
+          }
+        });
+      } else {
+        params.append(key, value);
+      }
     }
   });
   

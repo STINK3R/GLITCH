@@ -638,6 +638,25 @@ button {
 .animate-card-enter:nth-child(9) { animation-delay: 400ms; }
 
 /* ===========================================
+   Анимация для модального окна профиля
+   =========================================== */
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.25s ease-out;
+}
+
+/* ===========================================
    Утилиты для фиксации iOS blur проблем
    =========================================== */
 

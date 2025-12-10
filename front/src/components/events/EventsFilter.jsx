@@ -611,23 +611,14 @@ function formatDateForApi(dateString) {
 function transformToApiFilters(uiFilters) {
   const apiFilters = {};
   
-  // Город -> city (может быть массивом для мультиселекта)
-  if (uiFilters.city) {
-    if (Array.isArray(uiFilters.city)) {
-      apiFilters.city = uiFilters.city.join(",");
-    } else {
-      apiFilters.city = uiFilters.city;
-    }
+  // Город -> city (передаём массив как есть для повторяющихся параметров)
+  if (uiFilters.city && (!Array.isArray(uiFilters.city) || uiFilters.city.length > 0)) {
+    apiFilters.city = uiFilters.city;
   }
   
-  // Тип события -> type (может быть массивом для мультиселекта)
-  if (uiFilters.type) {
-    if (Array.isArray(uiFilters.type)) {
-      // Если массив - передаем как строку через запятую или первый элемент
-      apiFilters.type = uiFilters.type.join(",");
-    } else {
-      apiFilters.type = uiFilters.type;
-    }
+  // Тип события -> type (передаём массив как есть для повторяющихся параметров)
+  if (uiFilters.type && (!Array.isArray(uiFilters.type) || uiFilters.type.length > 0)) {
+    apiFilters.type = uiFilters.type;
   }
   
   // Статус -> status
