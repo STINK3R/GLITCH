@@ -52,9 +52,9 @@ export const Login = () => {
       // Проверяем роль пользователя и перенаправляем
       const user = useAuthStore.getState().user;
       if (user?.role === USER_ROLES.ADMIN) {
-        navigate("/admin");
+        navigate("/admin/users");
       } else {
-        navigate("/");
+        navigate("/events");
       }
     } catch (e) {
       console.error(e);

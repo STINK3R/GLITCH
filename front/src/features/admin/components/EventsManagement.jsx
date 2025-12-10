@@ -94,39 +94,81 @@ const ExportIcon = () => (
   </svg>
 );
 
+// Иконка глаза для просмотра
+const EyeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path
+      d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+);
+
 export function EventsManagement() {
   const [activeTab, setActiveTab] = useState("active");
   const [events, setEvents] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [previewEvent, setPreviewEvent] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, eventId: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [tabCounts, setTabCounts] = useState({ active: 0, past: 0, cancelled: 0 });
   const menuRef = useRef(null);
   const toast = useToast();
 
-  // Загрузка событий
-  const loadEvents = async () => {
-    setLoading(true);
+  // Загрузка событий с плавным переходом
+  const loadEvents = async (tab = activeTab, isInitial = false) => {
+    if (!isInitial) {
+      setIsTransitioning(true);
+    } else {
+      setLoading(true);
+    }
     try {
       let data;
-      if (activeTab === "active") {
+      if (tab === "active") {
         data = await adminApi.getActiveEvents();
-      } else if (activeTab === "past") {
+      } else if (tab === "past") {
         data = await adminApi.getPastEvents();
-      } else if (activeTab === "cancelled") {
+      } else if (tab === "cancelled") {
         data = await adminApi.getCancelledEvents();
       }
       setAllEvents(data || []);
+      setTabCounts(prev => ({ ...prev, [tab]: (data || []).length }));
     } catch (error) {
       console.error("Ошибка загрузки событий:", error);
       toast.error("Ошибка загрузки событий");
     } finally {
       setLoading(false);
+      // Небольшая задержка для плавной анимации
+      setTimeout(() => setIsTransitioning(false), 150);
+    }
+  };
+
+  // Загрузка всех счетчиков при монтировании
+  const loadAllCounts = async () => {
+    try {
+      const [activeData, pastData, cancelledData] = await Promise.all([
+        adminApi.getActiveEvents().catch(() => []),
+        adminApi.getPastEvents().catch(() => []),
+        adminApi.getCancelledEvents().catch(() => []),
+      ]);
+      setTabCounts({
+        active: (activeData || []).length,
+        past: (pastData || []).length,
+        cancelled: (cancelledData || []).length,
+      });
+    } catch (error) {
+      console.error("Ошибка загрузки счетчиков:", error);
     }
   };
 
@@ -144,8 +186,20 @@ export function EventsManagement() {
   }, [searchQuery, allEvents]);
 
   useEffect(() => {
-    loadEvents();
+    loadEvents(activeTab, loading);
   }, [activeTab]);
+
+  // Загрузка счетчиков при монтировании
+  useEffect(() => {
+    loadAllCounts();
+  }, []);
+
+  // Обработчик смены таба с анимацией
+  const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+    setIsTransitioning(true);
+    setActiveTab(tab);
+  };
 
   // Закрытие меню при клике вне
   useEffect(() => {
@@ -285,37 +339,37 @@ export function EventsManagement() {
         </h1>
       </div>
 
-      {/* Табы */}
-      <div className="flex flex-wrap border-b border-neutral-200 mb-6">
+      {/* Табы - растянуты на всю ширину */}
+      <div className="flex border-b border-neutral-200 mb-6">
         <button
-          onClick={() => setActiveTab("active")}
-          className={`px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          onClick={() => handleTabChange("active")}
+          className={`flex-1 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
             activeTab === "active"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
-          Активные {activeTab === "active" && events.length > 0 && events.length}
+          Активные <span className={`ml-1 transition-colors duration-200 ${activeTab === "active" ? "text-red-500" : "text-neutral-400"}`}>{tabCounts.active}</span>
         </button>
         <button
-          onClick={() => setActiveTab("past")}
-          className={`px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          onClick={() => handleTabChange("past")}
+          className={`flex-1 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
             activeTab === "past"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
-          Прошедшие {activeTab === "past" && events.length > 0 && events.length}
+          Прошедшие <span className={`ml-1 transition-colors duration-200 ${activeTab === "past" ? "text-red-500" : "text-neutral-400"}`}>{tabCounts.past}</span>
         </button>
         <button
-          onClick={() => setActiveTab("cancelled")}
-          className={`px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          onClick={() => handleTabChange("cancelled")}
+          className={`flex-1 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
             activeTab === "cancelled"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
-          Отклонённые {activeTab === "cancelled" && events.length > 0 && events.length}
+          Отклонённые <span className={`ml-1 transition-colors duration-200 ${activeTab === "cancelled" ? "text-red-500" : "text-neutral-400"}`}>{tabCounts.cancelled}</span>
         </button>
       </div>
 
@@ -335,34 +389,36 @@ export function EventsManagement() {
         </div>
       </div>
 
-      {/* Контент */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : events.length === 0 ? (
-        /* Пустое состояние */
-        <div className="flex flex-col items-center justify-center py-20">
-          <InfoIcon />
-          <h2 className="mt-4 text-xl font-semibold text-neutral-900">
-            {activeTab === "cancelled" ? "Нет отклонённых событий" : "Пустая страница"}
-          </h2>
-          <p className="mt-2 text-neutral-500 text-center">
-            {activeTab === "cancelled" 
-              ? "Отклонённые события будут отображаться здесь"
-              : activeTab === "past"
-              ? "Прошедших событий пока нет"
-              : <>Данная страница пока пустая.<br />Добавьте сюда событие</>
-            }
-          </p>
-        </div>
-      ) : (
-        /* Список событий */
-        <div className="space-y-3 sm:space-y-4">
-          {events.map((event) => (
+      {/* Контент с плавными переходами */}
+      <div className={`transition-all duration-300 ease-out ${isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : events.length === 0 ? (
+          /* Пустое состояние */
+          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+            <InfoIcon />
+            <h2 className="mt-4 text-xl font-semibold text-neutral-900">
+              {activeTab === "cancelled" ? "Нет отклонённых событий" : "Пустая страница"}
+            </h2>
+            <p className="mt-2 text-neutral-500 text-center">
+              {activeTab === "cancelled" 
+                ? "Отклонённые события будут отображаться здесь"
+                : activeTab === "past"
+                ? "Прошедших событий пока нет"
+                : <>Данная страница пока пустая.<br />Добавьте сюда событие</>
+              }
+            </p>
+          </div>
+        ) : (
+          /* Список событий */
+          <div className="space-y-3 sm:space-y-4">
+          {events.map((event, index) => (
             <div
               key={event.id}
-              className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start gap-3 sm:gap-4 shadow-sm"
+              className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start gap-3 sm:gap-4 shadow-sm animate-fade-in"
+              style={{ animationDelay: `${index * 50}ms` }}
             >
               {/* Drag handle - скрыт на мобильных */}
               <div className="hidden sm:block pt-2 cursor-grab">
@@ -408,7 +464,17 @@ export function EventsManagement() {
                       <DotsIcon />
                     </button>
                     {openMenuId === event.id && (
-                      <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
+                      <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10 animate-scale-in">
+                        <button
+                          onClick={() => {
+                            setPreviewEvent(event);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                        >
+                          <EyeIcon />
+                          Просмотр
+                        </button>
                         <button
                           onClick={() => handleEdit(event)}
                           className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
@@ -481,7 +547,17 @@ export function EventsManagement() {
                 </button>
 
                 {openMenuId === event.id && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10 animate-scale-in">
+                    <button
+                      onClick={() => {
+                        setPreviewEvent(event);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                    >
+                      <EyeIcon />
+                      Просмотр
+                    </button>
                     <button
                       onClick={() => handleEdit(event)}
                       className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
@@ -528,14 +604,15 @@ export function EventsManagement() {
             </div>
           ))}
 
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
-      {/* Кнопка добавления - закреплена в левом нижнем углу */}
-      <div className="fixed bottom-6 left-6 lg:left-[280px] z-30">
+      {/* Кнопка добавления - закреплена слева внизу */}
+      <div className="fixed bottom-8 left-8 lg:left-[296px] z-30">
         <button
           onClick={handleCreate}
-          className="px-8 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors shadow-lg"
+          className="px-10 py-4 bg-red-500 text-white text-base font-semibold rounded-2xl hover:bg-red-600 hover:shadow-2xl transition-all duration-200 shadow-xl hover:scale-105"
         >
           Добавить событие
         </button>
@@ -564,6 +641,164 @@ export function EventsManagement() {
         isLoading={isDeleting}
         variant="danger"
       />
+
+      {/* Модальное окно просмотра события от лица пользователя */}
+      {previewEvent && (
+        <EventPreviewModal
+          event={previewEvent}
+          onClose={() => setPreviewEvent(null)}
+          formatDate={formatDate}
+        />
+      )}
+    </div>
+  );
+}
+
+// Модальное окно просмотра события от лица пользователя
+function EventPreviewModal({ event, onClose, formatDate }) {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+
+  const handleBackdropClick = (e) => {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      onClose();
+    }
+  };
+
+  const imageUrl = event.image_url ? getImageUrl(event.image_url) : null;
+  const participantsCount = event.members?.length || 0;
+  const maxMembers = event.max_members;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={handleBackdropClick}
+    >
+      <div
+        ref={modalRef}
+        className="w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl transform animate-scale-in overflow-hidden flex flex-col"
+      >
+        {/* Заголовок */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+          <h2 className="text-lg font-semibold text-neutral-900">Просмотр события</h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Контент */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Изображение */}
+          <div className="w-full h-48 sm:h-64 bg-neutral-100">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={event.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                  <path d="M21 15l-5-5L5 21" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+            )}
+          </div>
+
+          <div className="p-6">
+            {/* Бейджи */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-full">
+                Активное
+              </span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-neutral-100 text-neutral-900 rounded-full">
+                <UsersIcon />
+                {maxMembers && maxMembers > 0 
+                  ? `${participantsCount} / ${maxMembers}` 
+                  : participantsCount}
+              </span>
+              {event.type && (
+                <span className="px-3 py-1.5 text-sm font-medium bg-neutral-100 text-neutral-900 rounded-full">
+                  {event.type}
+                </span>
+              )}
+            </div>
+
+            {/* Название */}
+            <h3 className="text-xl sm:text-2xl font-semibold text-neutral-900 mb-2">
+              {event.name}
+            </h3>
+
+            {/* Дата и место */}
+            <p className="text-sm text-neutral-500 mb-6">
+              {formatDate(event.start_date)} — {formatDate(event.end_date)}
+              {event.location && ` | ${event.location}`}
+            </p>
+
+            {/* Кнопка участия (превью) */}
+            <div className="mb-6">
+              <button
+                disabled
+                className="w-full py-3.5 text-base font-medium text-white bg-red-500 rounded-2xl cursor-default"
+              >
+                Подтвердить участие
+              </button>
+              <p className="text-center text-xs text-neutral-400 mt-2">
+                Вы не участвуете
+              </p>
+            </div>
+
+            {/* О событии */}
+            <div className="mb-6">
+              <h4 className="text-base font-semibold text-neutral-900 mb-2">О событии</h4>
+              <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap">
+                {event.description || event.short_description || "Описание отсутствует"}
+              </p>
+            </div>
+
+            {/* Оплата */}
+            <div>
+              <h4 className="text-base font-semibold text-neutral-900 mb-2">Оплата</h4>
+              <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap">
+                {event.pay_data || "Бесплатно"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Футер */}
+        <div className="px-6 py-4 border-t border-neutral-100 bg-neutral-50">
+          <button
+            onClick={onClose}
+            className="w-full py-3 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

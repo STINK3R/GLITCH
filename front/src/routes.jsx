@@ -11,12 +11,29 @@ import { PrivacyPage } from "./pages/Legal/PrivacyPage.jsx";
 import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
 import { AdminRoute } from "./components/layouts/AdminRoute.jsx";
 import { AdminLayout, EventsManagement, UsersManagement } from "./features/admin";
+import { useAuth } from "./features/auth/useAuth";
+import { USER_ROLES } from "./features/auth/AuthStore";
+
+// Компонент для редиректа с главной страницы
+const RootRedirect = () => {
+  const { user, isAuthenticated } = useAuth();
+  
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role === USER_ROLES.ADMIN) {
+    return <Navigate to="/admin/users" replace />;
+  }
+
+  return <Navigate to="/events" replace />;
+};
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Главная страница - редирект на события */}
-      <Route path="/" element={<Navigate to="/events" replace />} />
+      {/* Главная страница - умный редирект */}
+      <Route path="/" element={<RootRedirect />} />
 
       {/* Авторизация */}
       <Route path="/login" element={<Login />} />
@@ -58,7 +75,7 @@ export default function AppRoutes() {
           </AdminRoute>
         }
       >
-        <Route index element={<Navigate to="/admin/events" replace />} />
+        <Route index element={<Navigate to="/admin/users" replace />} />
         <Route path="users" element={<UsersManagement />} />
         <Route path="events" element={<EventsManagement />} />
       </Route>
