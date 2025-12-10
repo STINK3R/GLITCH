@@ -13,6 +13,7 @@ export const EVENTS_QUERY_KEYS = {
   active: ["events", "active"],
   my: ["events", "my"],
   past: ["events", "past"],
+  favorites: ["events", "favorites"],
   detail: (id) => ["events", "detail", id],
   similar: (type, excludeId) => ["events", "similar", type, excludeId],
   participants: (id) => ["events", "participants", id],
@@ -232,6 +233,20 @@ export function useToggleFavorite() {
       queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
       // Инвалидируем детали события
       queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.detail(variables.eventId) });
+      // Инвалидируем список избранного
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.favorites });
     },
+  });
+}
+
+/**
+ * Хук для получения избранных событий
+ */
+export function useFavoriteEvents() {
+  return useQuery({
+    queryKey: EVENTS_QUERY_KEYS.favorites,
+    queryFn: () => safeFetch(() => eventsApi.getFavorites()),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 }

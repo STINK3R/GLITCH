@@ -14,6 +14,7 @@ import heartIcon from "/icons/heart.svg";
 import bellIcon from "/icons/notification.svg";
 import { NotificationsPanel, NOTIFICATION_TYPES } from "../../ui/NotificationsPanel";
 import { UserProfileModal } from "../../ui/UserProfileModal";
+import { FavoritesModal } from "../../ui/FavoritesModal";
 
 // Высота всех элементов в хедере
 const HEADER_ELEMENT_HEIGHT = 48;
@@ -89,6 +90,9 @@ export default function Header() {
   
   // Состояние для модального окна профиля
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  
+  // Состояние для модального окна избранного
+  const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
   
   // Получаем уведомления с API
   const { data: rawNotifications = [], isLoading: isLoadingNotifications } = useNotifications();
@@ -264,6 +268,7 @@ export default function Header() {
               <>
                 {/* Кнопка Избранное (скрыта на мобильных) */}
                 <button 
+                  onClick={() => setIsFavoritesModalOpen(true)}
                   className="hidden md:flex items-center gap-2 px-4 text-sm font-medium bg-[#EFEFEF] rounded-[20px] text-neutral-700 hover:bg-neutral-200 transition-colors mr-[10px]"
                   style={{ height: HEADER_ELEMENT_HEIGHT }}
                 >
@@ -319,6 +324,12 @@ export default function Header() {
                 <UserProfileModal
                   isOpen={isProfileModalOpen}
                   onClose={() => setIsProfileModalOpen(false)}
+                />
+                
+                {/* Модальное окно избранного */}
+                <FavoritesModal
+                  isOpen={isFavoritesModalOpen}
+                  onClose={() => setIsFavoritesModalOpen(false)}
                 />
               </>
             ) : (

@@ -118,8 +118,8 @@ export function EventCard({ event }) {
   };
 
   // Получаем изображение с поддержкой разных названий полей
-  const imageUrl = getField(event, "image_url", "image", "photo", "cover", "preview", "thumbnail") 
-    || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop";
+  const rawImageUrl = getField(event, "image_url", "image", "photo", "cover", "preview", "thumbnail");
+  const imageUrl = getImageUrl(rawImageUrl) || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop";
 
   // Получаем название
   const title = getField(event, "name", "title", "event_name") || "Название события";

@@ -142,7 +142,7 @@ export const eventsApi = {
    * Получить избранные события
    * @returns {Promise<Array>} Список избранных событий
    */
-  getFavorites: () => http("/api/events/favorites"),
+  getFavorites: () => http("/api/events/liked"),
 
   /**
    * Получить участников события
