@@ -273,9 +273,9 @@ class EventsService:
         csv_path = settings.CSV_DIR / f"members_event_{event_id}.csv"
         with open(csv_path, "w") as f:
             writer = csv.writer(f)
-            writer.writerow(["ID", "Name", "Surname", "Father Name", "Email"])
+            writer.writerow(["ID", "Имя", "Фамилия", "Отчество", "Email"])
             for member in members:
-                writer.writerow([member.id, member.name, member.surname, member.father_name, member.email])
+                writer.writerow([member.id, member.name, member.surname, member.father_name if member.father_name else "", member.email])
         return str(csv_path)
 
     @staticmethod
@@ -286,9 +286,9 @@ class EventsService:
         excel_path = settings.EXCEL_DIR / f"members_event_{event_id}.xlsx"
         wb = Workbook()
         ws = wb.active
-        ws.append(["ID", "Name", "Surname", "Father Name", "Email"])
+        ws.append(["ID", "Имя", "Фамилия", "Отчество", "Email"])
         for member in members:
-            ws.append([member.id, member.name, member.surname, member.father_name, member.email])
+            ws.append([member.id, member.name, member.surname, member.father_name if member.father_name else "", member.email])
         wb.save(excel_path)
         return str(excel_path)
 
