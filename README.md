@@ -11,14 +11,10 @@ SMTP_FROM_NAME=
 
 
 TODO:
-Add comments and rating in events (High)
 User profile (High)
 
 Search by event name substring (Medium)
+Crete fixtures (Medium)
 
 Deleting old images (Low)
 Make secure dict for verification codes (Low)
-
-
-
-

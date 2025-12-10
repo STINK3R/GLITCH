@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,5 +15,14 @@ class UserAdminResponse(BaseModel):
     email: str
     role: UserRole
     status: UserStatus
-    created_at: date
-    updated_at: date
+    created_at: datetime
+    updated_at: datetime
+
+
+class EventCommentAdminResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    event_id: int
+    user_id: int
+    comment: str
+    rating: int | None
