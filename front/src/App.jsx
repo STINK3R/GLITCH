@@ -5,7 +5,7 @@ import MobileBottomNav from './components/layouts/MobileBottomNav';
 import { AuthInitializer } from "./features/auth/AuthInitializer";
 
 // Страницы, где не нужен Header и нижняя навигация
-const AUTH_ROUTES = ['/login', '/register', '/recovery', '/reset-password', '/verify-email', '/terms', '/privacy'];
+const AUTH_ROUTES = ['/login', '/register', '/recovery', '/reset-password', '/verify-email', '/terms', '/privacy', '/admin'];
 
 export default function App() {
     const location = useLocation();

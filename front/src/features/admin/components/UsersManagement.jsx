@@ -355,14 +355,40 @@ function EditUserModal({ isOpen, onClose, onSave, user, isLoading }) {
   );
 }
 
+// Иконка поиска
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="9" r="6" />
+    <path d="M13.5 13.5L17 17" strokeLinecap="round" />
+  </svg>
+);
+
+// Иконка фильтра
+const FilterIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M3 5h14M5 10h10M7 15h6" strokeLinecap="round" />
+  </svg>
+);
+
 export function UsersManagement() {
   const [activeTab, setActiveTab] = useState("active");
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [counts, setCounts] = useState({ active: 0, deleted: 0 });
   const menuRef = useRef(null);
   const toast = useToast();
+
+  // Фильтры
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    search: "",
+    role: "",
+    status: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
   // Модальные окна
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
@@ -376,14 +402,14 @@ export function UsersManagement() {
     setLoading(true);
     try {
       const data = await adminApi.getUsers();
-      const allUsers = data || [];
+      const fetchedUsers = data || [];
+      setAllUsers(fetchedUsers);
       
       // Разделяем на активных и удаленных
-      const activeUsers = allUsers.filter((u) => u.status !== "deleted");
-      const deletedUsers = allUsers.filter((u) => u.status === "deleted");
+      const activeUsers = fetchedUsers.filter((u) => u.status !== "deleted");
+      const deletedUsers = fetchedUsers.filter((u) => u.status === "deleted");
       
       setCounts({ active: activeUsers.length, deleted: deletedUsers.length });
-      setUsers(activeTab === "active" ? activeUsers : deletedUsers);
     } catch (error) {
       console.error("Ошибка загрузки пользователей:", error);
       toast.error("Ошибка загрузки пользователей");
@@ -392,9 +418,75 @@ export function UsersManagement() {
     }
   };
 
+  // Применение фильтров
+  const applyFilters = () => {
+    let filtered = allUsers;
+
+    // Фильтр по табу (активные/удаленные)
+    if (activeTab === "active") {
+      filtered = filtered.filter((u) => u.status !== "deleted");
+    } else {
+      filtered = filtered.filter((u) => u.status === "deleted");
+    }
+
+    // Поиск по ФИО
+    if (filters.search.trim()) {
+      const searchLower = filters.search.toLowerCase().trim();
+      filtered = filtered.filter((u) => {
+        const fullName = `${u.surname || ""} ${u.name || ""} ${u.father_name || ""}`.toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        return fullName.includes(searchLower) || email.includes(searchLower);
+      });
+    }
+
+    // Фильтр по роли
+    if (filters.role) {
+      filtered = filtered.filter((u) => u.role === filters.role);
+    }
+
+    // Фильтр по статусу (для активных пользователей)
+    if (filters.status && activeTab === "active") {
+      filtered = filtered.filter((u) => u.status === filters.status);
+    }
+
+    // Фильтр по дате регистрации
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter((u) => {
+        if (!u.created_at) return false;
+        return new Date(u.created_at) >= fromDate;
+      });
+    }
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter((u) => {
+        if (!u.created_at) return false;
+        return new Date(u.created_at) <= toDate;
+      });
+    }
+
+    setUsers(filtered);
+  };
+
+  // Сброс фильтров
+  const resetFilters = () => {
+    setFilters({
+      search: "",
+      role: "",
+      status: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+  };
+
   useEffect(() => {
     loadUsers();
-  }, [activeTab]);
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [activeTab, filters, allUsers]);
 
   // Закрытие меню при клике вне
   useEffect(() => {
@@ -459,12 +551,12 @@ export function UsersManagement() {
     setOpenMenuId(null);
   };
 
-  // Подтверждение удаления
+  // Подтверждение удаления (мягкое удаление - смена статуса на deleted)
   const confirmDelete = async () => {
     if (!deleteModal.user) return;
     setIsProcessing(true);
     try {
-      await adminApi.deleteUser(deleteModal.user.id);
+      await adminApi.deleteUser(deleteModal.user.id, deleteModal.user);
       toast.success("Пользователь успешно удален");
       setDeleteModal({ isOpen: false, user: null });
       loadUsers();
@@ -547,6 +639,111 @@ export function UsersManagement() {
         >
           Удалённые {counts.deleted > 0 && counts.deleted}
         </button>
+      </div>
+
+      {/* Панель фильтрации */}
+      <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
+        {/* Строка поиска и кнопка фильтров */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Поиск по ФИО */}
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+              <SearchIcon />
+            </span>
+            <input
+              type="text"
+              placeholder="Поиск по ФИО или email..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+            />
+          </div>
+          
+          {/* Кнопка показа/скрытия фильтров */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-colors ${
+              showFilters
+                ? "border-red-500 text-red-500 bg-red-50"
+                : "border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+            }`}
+          >
+            <FilterIcon />
+            Фильтры
+            {(filters.role || filters.status || filters.dateFrom || filters.dateTo) && (
+              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+            )}
+          </button>
+        </div>
+
+        {/* Расширенные фильтры */}
+        {showFilters && (
+          <div className="mt-4 pt-4 border-t border-neutral-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Роль */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1.5">Роль</label>
+                <select
+                  value={filters.role}
+                  onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white"
+                >
+                  <option value="">Все роли</option>
+                  <option value="admin">Администратор</option>
+                  <option value="user">Пользователь</option>
+                </select>
+              </div>
+
+              {/* Статус */}
+              {activeTab === "active" && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1.5">Статус</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white"
+                  >
+                    <option value="">Все статусы</option>
+                    <option value="active">Активен</option>
+                    <option value="blocked">Заблокирован</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Дата регистрации от */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1.5">Дата регистрации от</label>
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                />
+              </div>
+
+              {/* Дата регистрации до */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1.5">Дата регистрации до</label>
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                />
+              </div>
+            </div>
+
+            {/* Кнопка сброса */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={resetFilters}
+                className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+              >
+                Сбросить фильтры
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Контент */}

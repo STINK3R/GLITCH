@@ -183,13 +183,22 @@ export const adminApi = {
     }),
 
   /**
-   * Удалить пользователя (мягкое удаление через изменение статуса)
+   * Удалить пользователя (мягкое удаление через изменение статуса на deleted)
    * @param {number|string} id - ID пользователя
-   * @returns {Promise<void>}
+   * @param {Object} userData - Текущие данные пользователя
+   * @returns {Promise<Object>}
    */
-  deleteUser: (id) =>
+  deleteUser: (id, userData) =>
     http(`/api/users/${id}`, {
-      method: "DELETE",
+      method: "PUT",
+      body: JSON.stringify({
+        id: userData.id,
+        name: userData.name || "",
+        surname: userData.surname || "",
+        father_name: userData.father_name || "",
+        role: userData.role || "user",
+        status: "deleted",
+      }),
     }),
 
   /**
