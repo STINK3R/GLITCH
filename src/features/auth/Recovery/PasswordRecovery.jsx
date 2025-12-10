@@ -91,6 +91,7 @@ export const PasswordRecovery = () => {
     <AuthLayout
       showBack={true}
       onBack={handleBack}
+      hideLogo={true}
     >
       {step === 0 && (
         <div className={getAnimationClass()}>

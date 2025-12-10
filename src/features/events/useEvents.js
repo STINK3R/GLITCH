@@ -14,69 +14,107 @@ export const EVENTS_QUERY_KEYS = {
   my: ["events", "my"],
   past: ["events", "past"],
   detail: (id) => ["events", "detail", id],
+  similar: (type, excludeId) => ["events", "similar", type, excludeId],
   participants: (id) => ["events", "participants", id],
 };
 
 /**
+ * Нормализовать ответ API (может быть массив или объект с items)
+ */
+function normalizeResponse(data) {
+  if (Array.isArray(data)) return data;
+  if (data?.items) return data.items;
+  if (data?.events) return data.events;
+  if (data?.data) return data.data;
+  return [];
+}
+
+/**
+ * Безопасное выполнение запроса с обработкой ошибок
+ */
+async function safeFetch(fetchFn) {
+  try {
+    const data = await fetchFn();
+    return normalizeResponse(data);
+  } catch (error) {
+    const status = error?.response?.status || error?.status;
+    // Если 404 или 400 (нет результатов по фильтру), возвращаем пустой список
+    if (status === 404 || status === 400 || status === 422) {
+      return [];
+    }
+    // Если ошибка сети или сервера недоступен, возвращаем пустой список
+    if (error?.code === 'ERR_NETWORK' || error?.code === 'ECONNREFUSED') {
+      console.warn('Network error, returning empty list:', error.message);
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
  * Хук для получения событий пользователя
  */
-export function useMyEvents() {
+export function useMyEvents(filters = {}) {
   const setMyEvents = useEventsStore((s) => s.setMyEvents);
 
   return useQuery({
-    queryKey: EVENTS_QUERY_KEYS.my,
+    queryKey: [...EVENTS_QUERY_KEYS.my, filters],
     queryFn: async () => {
-      const data = await eventsApi.getMy();
-      setMyEvents(data);
-      return data;
+      const events = await safeFetch(() => eventsApi.getMy(filters));
+      setMyEvents(events);
+      return events;
     },
-    staleTime: 1000 * 60 * 5, // 5 минут
+    staleTime: 1000 * 60 * 5,
+    retry: false, // Не повторять запросы при ошибках (особенно 404)
   });
 }
 
 /**
- * Хук для получения активных событий
+ * Хук для получения активных событий с фильтрацией
  */
-export function useActiveEvents() {
+export function useActiveEvents(filters = {}) {
   const setActiveEvents = useEventsStore((s) => s.setActiveEvents);
 
   return useQuery({
-    queryKey: EVENTS_QUERY_KEYS.active,
+    queryKey: [...EVENTS_QUERY_KEYS.active, filters],
     queryFn: async () => {
-      const data = await eventsApi.getActive();
-      setActiveEvents(data);
-      return data;
+      const events = await safeFetch(() => eventsApi.getActive(filters));
+      setActiveEvents(events);
+      return events;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 }
 
 /**
  * Хук для получения прошедших событий
  */
-export function usePastEvents() {
+export function usePastEvents(filters = {}) {
   const setPastEvents = useEventsStore((s) => s.setPastEvents);
 
   return useQuery({
-    queryKey: EVENTS_QUERY_KEYS.past,
+    queryKey: [...EVENTS_QUERY_KEYS.past, filters],
     queryFn: async () => {
-      const data = await eventsApi.getPast();
-      setPastEvents(data);
-      return data;
+      const events = await safeFetch(() => eventsApi.getPast(filters));
+      setPastEvents(events);
+      return events;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 }
 
 /**
  * Хук для загрузки всех событий по вкладкам
+ * @param {Object} filters - Параметры фильтрации (применяются ко всем вкладкам)
  */
-export function useAllEvents() {
+export function useAllEvents(filters = {}) {
   const activeTab = useEventsStore((s) => s.activeTab);
 
-  const myEventsQuery = useMyEvents();
-  const activeEventsQuery = useActiveEvents();
-  const pastEventsQuery = usePastEvents();
+  const myEventsQuery = useMyEvents(filters);
+  const activeEventsQuery = useActiveEvents(filters);
+  const pastEventsQuery = usePastEvents(filters);
 
   // Определяем текущий запрос на основе активной вкладки
   const currentQuery = {
@@ -90,14 +128,8 @@ export function useAllEvents() {
     activeEventsQuery,
     pastEventsQuery,
     currentQuery,
-    isLoading:
-      myEventsQuery.isLoading ||
-      activeEventsQuery.isLoading ||
-      pastEventsQuery.isLoading,
-    isError:
-      myEventsQuery.isError ||
-      activeEventsQuery.isError ||
-      pastEventsQuery.isError,
+    isLoading: currentQuery?.isLoading || false,
+    isError: currentQuery?.isError || false,
   };
 }
 
@@ -131,10 +163,7 @@ export function useConfirmParticipation() {
   return useMutation({
     mutationFn: (eventId) => eventsApi.confirmParticipation(eventId),
     onSuccess: (_, eventId) => {
-      // Обновляем локальное состояние
       updateEventParticipation(eventId, true);
-
-      // Инвалидируем кэш для обновления данных с сервера
       queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
     },
   });
@@ -152,10 +181,7 @@ export function useCancelParticipation() {
   return useMutation({
     mutationFn: (eventId) => eventsApi.cancelParticipation(eventId),
     onSuccess: (_, eventId) => {
-      // Обновляем локальное состояние
       updateEventParticipation(eventId, false);
-
-      // Инвалидируем кэш для обновления данных с сервера
       queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
     },
   });
@@ -173,3 +199,39 @@ export function useEventParticipants(eventId) {
   });
 }
 
+/**
+ * Хук для получения похожих событий по типу
+ * @param {string} type - Тип события
+ * @param {number|string} excludeId - ID события для исключения
+ */
+export function useSimilarEvents(type, excludeId) {
+  return useQuery({
+    queryKey: EVENTS_QUERY_KEYS.similar(type, excludeId),
+    queryFn: () => eventsApi.getSimilar(type, excludeId),
+    enabled: !!type && !!excludeId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Хук для добавления/удаления события из избранного (лайк/анлайк)
+ */
+export function useToggleFavorite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, isLiked }) => {
+      if (isLiked) {
+        return eventsApi.unlikeEvent(eventId);
+      } else {
+        return eventsApi.likeEvent(eventId);
+      }
+    },
+    onSuccess: (data, variables) => {
+      // Инвалидируем кэш событий
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
+      // Инвалидируем детали события
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.detail(variables.eventId) });
+    },
+  });
+}

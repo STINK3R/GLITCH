@@ -13,7 +13,7 @@ export const EmailSentStep = ({ email, maskedEmail, timer, loading, onResend }) 
   };
 
   return (
-    <div className="animate-fade-in text-center pt-8">
+    <div className="animate-fade-in text-center">
       <h2 className="text-2xl font-bold mb-3">Проверьте вашу почту</h2>
       <p className="text-neutral-400 text-sm mb-10 leading-relaxed">
         Мы отправили письмо на почту<br />

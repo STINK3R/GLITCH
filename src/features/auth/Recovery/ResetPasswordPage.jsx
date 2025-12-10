@@ -107,8 +107,8 @@ export const ResetPasswordPage = () => {
 
   if (isInvalidToken) {
     return (
-      <AuthLayout showBack onBack={() => navigate("/login")}>
-        <div className="animate-fade-in text-center pt-8">
+      <AuthLayout showBack onBack={() => navigate("/login")} hideLogo={true}>
+        <div className="animate-fade-in text-center">
           <h2 className="text-2xl font-bold mb-3">Ссылка недействительна</h2>
           <p className="text-neutral-400 text-sm mb-8 leading-relaxed">
             Похоже, вы перешли по устаревшей или уже<br />
@@ -124,7 +124,7 @@ export const ResetPasswordPage = () => {
   }
 
   return (
-    <AuthLayout showBack onBack={() => navigate("/login")}>
+    <AuthLayout showBack onBack={() => navigate("/login")} hideLogo={true}>
       <div className="animate-fade-in">
         <h2 className="text-2xl font-bold mb-2 text-center">Восстановление пароля</h2>
         <p className="text-neutral-400 text-sm text-center mb-8">

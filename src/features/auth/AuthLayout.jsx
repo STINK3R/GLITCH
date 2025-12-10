@@ -1,8 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-// Импорт изображения концерта
-import concertImage from "./assets/mainwindowimg.png";
+// Путь к изображению концерта в public/img
+const concertImage = "/img/mainwindowimg.png";
 
 // Полный логотип Слёт - иконка + текст (SVG компонент)
 const SletFullLogo = ({ height = 32 }) => (
@@ -24,7 +24,7 @@ const SletFullLogo = ({ height = 32 }) => (
 // Флаг для отслеживания проигрывания начальной анимации
 let hasPlayedInitialAnimation = false;
 
-export const AuthLayout = ({ children, title, subtitle, showBack, onBack }) => {
+export const AuthLayout = ({ children, title, subtitle, showBack, onBack, hideLogo = false }) => {
   const navigate = useNavigate();
 
   // Проверяем, проигрывалась ли анимация
@@ -71,12 +71,14 @@ export const AuthLayout = ({ children, title, subtitle, showBack, onBack }) => {
         {/* Контент формы */}
         <div className="w-full max-w-md">
           {/* Полный логотип SVG (иконка + текст) - не кликабельный */}
-          <div className={`flex flex-col items-center text-center mb-8 ${shouldAnimate ? 'animate-fade-in' : ''}`}>
-            <div className="mb-2">
-              <SletFullLogo height={40} />
+          {!hideLogo ? (
+            <div className={`flex flex-col items-center text-center mb-8 ${shouldAnimate ? 'animate-fade-in' : ''}`}>
+              <div className="mb-2">
+                <SletFullLogo height={40} />
+              </div>
+              <p className="text-sm text-neutral-400">Больше, чем просто события</p>
             </div>
-            <p className="text-sm text-neutral-400">Больше, чем просто события</p>
-          </div>
+          ) : null}
 
           {/* Заголовок и подзаголовок (если есть) */}
           {title && <h1 className="text-2xl font-bold mb-2 text-center">{title}</h1>}

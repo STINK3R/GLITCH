@@ -130,6 +130,7 @@ export const Register = () => {
     <AuthLayout
       showBack={step > 0}
       onBack={handleBack}
+      hideLogo={step === 1}
     >
       {step === 0 && (
         <div key="step-0" className={getAnimationClass()}>

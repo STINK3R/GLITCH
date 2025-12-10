@@ -1,194 +1,243 @@
 /**
  * Карточка события для отображения в сетке
- * Показывает: фото, название, даты, участники, статус
+ * Дизайн как на скриншоте: изображение, бейдж статуса, сердечко, участники
  */
 
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
+import { useToggleFavorite } from "../../features/events/useEvents";
 import { getImageUrl } from "../../utils/imageUrl";
 
-// Конфигурация статусов для отображения
+import heartIcon from "/icons/heart-on-events-card.svg";
+import heartFilledIcon from "/icons/add-heart-on-events-card.svg";
+import participantsIcon from "/icons/people.svg";
+
+// Конфигурация статусов для отображения (только Активное и Прошедшее)
 const STATUS_CONFIG = {
   [EVENT_STATUS.ACTIVE]: {
     label: "Активное",
-    className: "bg-emerald-100 text-emerald-700",
-    dot: "bg-emerald-500",
+    className: "bg-[#EE2C34] text-white",
   },
-  [EVENT_STATUS.PAST]: {
+  [EVENT_STATUS.COMPLETED]: {
     label: "Прошедшее",
-    className: "bg-neutral-100 text-neutral-600",
-    dot: "bg-neutral-400",
+    className: "bg-neutral-500 text-white",
   },
-  [EVENT_STATUS.REJECTED]: {
-    label: "Отклонено",
-    className: "bg-red-100 text-red-700",
-    dot: "bg-red-500",
+  // Для обратной совместимости
+  "active": {
+    label: "Активное",
+    className: "bg-[#EE2C34] text-white",
+  },
+  "completed": {
+    label: "Прошедшее",
+    className: "bg-neutral-500 text-white",
   },
 };
 
 /**
- * Форматирование даты для отображения
- * @param {string} dateString - ISO строка даты
- * @returns {string} Отформатированная дата
+ * Получить значение поля с поддержкой разных названий
  */
-function formatDate(dateString) {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-  return date.toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-  });
+function getField(event, ...keys) {
+  for (const key of keys) {
+    if (event?.[key] !== undefined && event?.[key] !== null) {
+      return event[key];
+    }
+  }
+  return null;
 }
 
 /**
- * Форматирование диапазона дат
+ * Форматирование диапазона дат для отображения
  * @param {string} startDate - Дата начала
  * @param {string} endDate - Дата окончания
  * @returns {string} Отформатированный диапазон
  */
 function formatDateRange(startDate, endDate) {
-  const start = formatDate(startDate);
-  const end = formatDate(endDate);
-
-  if (start === end) return start;
-  return `${start} — ${end}`;
+  if (!startDate) return "";
+  
+  const months = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря"
+  ];
+  
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  
+  // Проверка на валидность даты
+  if (isNaN(start.getTime())) return "";
+  
+  const startDay = start.getDate();
+  const startMonth = months[start.getMonth()];
+  
+  if (!end || isNaN(end.getTime()) || start.toDateString() === end.toDateString()) {
+    return `${startDay} ${startMonth}`;
+  }
+  
+  const endDay = end.getDate();
+  const endMonth = months[end.getMonth()];
+  
+  // Если один месяц
+  if (start.getMonth() === end.getMonth()) {
+    return `${startDay} — ${endDay} ${startMonth}`;
+  }
+  
+  return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
 }
 
 export function EventCard({ event }) {
-  const statusConfig = STATUS_CONFIG[event.status] || STATUS_CONFIG[EVENT_STATUS.ACTIVE];
+  const [isFavorite, setIsFavorite] = useState(
+    getField(event, "is_user_liked_event", "isFavorite", "is_favorite", "isLiked") || false
+  );
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Хук для лайка/анлайка
+  const toggleFavoriteMutation = useToggleFavorite();
+  
+  // Получаем статус с поддержкой разных форматов
+  const status = getField(event, "status", "state") || EVENT_STATUS.ACTIVE;
+  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG[EVENT_STATUS.ACTIVE];
+  
+  // Обработчик клика по избранному (оптимистичное обновление)
+  const handleFavoriteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Сразу меняем UI
+    const newValue = !isFavorite;
+    setIsFavorite(newValue);
+    // Отправляем запрос в фоне
+    toggleFavoriteMutation.mutate(
+      { eventId: event?.id, isLiked: !newValue },
+      {
+        onError: () => {
+          // Откатываем при ошибке
+          setIsFavorite(!newValue);
+          console.error("Ошибка изменения избранного");
+        },
+      }
+    );
+  };
+
+  // Получаем изображение с поддержкой разных названий полей
+  const imageUrl = getField(event, "image_url", "image", "photo", "cover", "preview", "thumbnail") 
+    || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop";
+
+  // Получаем название
+  const title = getField(event, "name", "title", "event_name") || "Название события";
+
+  // Получаем даты
+  const startDate = getField(event, "start_date", "startDate", "date_start", "start_at", "date_from", "begin_date");
+  const endDate = getField(event, "end_date", "endDate", "date_end", "end_at", "date_to", "finish_date");
+
+  // Получаем количество участников (из массива members или поля)
+  const members = getField(event, "members") || [];
+  const participantsCount = members.length || getField(event, "participantsCount", "participants_count", "members_count", "users_count", "count") || 0;
+  // Максимальное количество участников (ограничение)
+  const maxMembers = getField(event, "max_members", "maxMembers", "max_participants", "limit");
+
+  // Получаем краткое описание (short_description) - ключевое поле для hover эффекта
+  const shortDescription = getField(event, "short_description", "shortDescription", "short_desc") || "";
+  
+  // Определяем, показывать ли блюр и тултип (только если есть краткое описание)
+  const hasShortDescription = Boolean(shortDescription);
 
   return (
     <Link
-      to={`/events/${event.id}`}
-      className="group relative flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-neutral-100"
+      to={`/events/${event?.id || 1}`}
+      className="group relative flex flex-col transition-all duration-300 animate-card-enter"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Изображение */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
-        {event.image_url ? (
-          <img
-            src={getImageUrl(event.image_url)}
-            alt={event.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-100 to-indigo-100">
-            <svg
-              className="w-16 h-16 text-violet-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
+      <div className="relative h-[140px] md:h-[200px] overflow-hidden bg-neutral-100 rounded-[16px] md:rounded-[20px]">
+        <img
+          src={imageUrl}
+          alt={title}
+          className={`w-full h-full object-cover transition-all duration-500 ${
+            isHovered 
+              ? hasShortDescription 
+                ? "scale-110 blur-[6px]" 
+                : "scale-110" 
+              : "scale-100 blur-0"
+          }`}
+          loading="lazy"
+          onError={(e) => {
+            e.target.src = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop";
+          }}
+        />
+        
+        {/* Затемнение при ховере - только если есть краткое описание */}
+        {hasShortDescription && (
+          <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`} />
+        )}
+        
+        {/* Тултип с кратким описанием - только если есть short_description */}
+        {hasShortDescription && (
+          <div className={`absolute inset-0 flex flex-col justify-center items-center p-6 transition-all duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}>
+            <p className="text-white text-center text-[15px] leading-relaxed font-medium drop-shadow-lg">
+              {shortDescription}
+            </p>
           </div>
         )}
+        
+        {/* Кнопка избранное - верхний правый угол */}
+        <button
+          onClick={handleFavoriteClick}
+          className={`absolute top-2 right-2 md:top-3 md:right-3 flex items-center justify-center px-1.5 py-1 md:px-2 bg-[#F5F5F5] rounded-full md:rounded-[18px] hover:bg-white transition-all z-10 ${
+            isHovered ? "opacity-100" : ""
+          }`}
+        >
+          <div className={`w-4 h-4 transition-transform duration-300 ease-out ${isFavorite ? "scale-110" : "scale-100"}`}>
+            <img 
+              src={isFavorite ? heartFilledIcon : heartIcon} 
+              alt="" 
+              className="w-full h-full transition-all duration-300 ease-out"
+              style={{ 
+                filter: isFavorite ? "drop-shadow(0 0 4px rgba(238, 44, 52, 0.4))" : "none",
+              }}
+            />
+          </div>
+        </button>
 
-        {/* Бейдж статуса */}
-        <div className="absolute top-3 right-3">
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${statusConfig.className}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+        {/* Бейдж статуса - верхний левый угол */}
+        <div className={`absolute top-2 left-2 md:top-3 md:left-3 z-10 transition-opacity duration-300 ${
+          isHovered && hasShortDescription ? "opacity-0" : "opacity-100"
+        }`}>
+          <span className={`flex items-center justify-center px-2 py-0.5 md:py-1 text-xs md:text-sm font-medium rounded-full md:rounded-[18px] ${statusConfig.className}`}>
             {statusConfig.label}
           </span>
         </div>
 
-        {/* Индикатор участия */}
-        {event.is_user_in_event && (
-          <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-violet-600 text-white rounded-full">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Участвую
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Контент */}
-      <div className="flex flex-col flex-1 p-4">
-        {/* Название */}
-        <h3 className="text-lg font-semibold text-neutral-900 line-clamp-2 group-hover:text-violet-600 transition-colors">
-          {event.name}
-        </h3>
-
-        {/* Краткое описание */}
-        {event.short_description && (
-          <p className="mt-1 text-sm text-neutral-500 line-clamp-2">
-            {event.short_description}
-          </p>
-        )}
-
-        {/* Мета-информация */}
-        <div className="flex items-center gap-4 mt-auto pt-4 text-sm text-neutral-600">
-          {/* Даты */}
-          <div className="flex items-center gap-1.5">
-            <svg
-              className="w-4 h-4 text-neutral-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <span>{formatDateRange(event.start_date, event.end_date)}</span>
-          </div>
-
-          {/* Участники */}
-          <div className="flex items-center gap-1.5">
-            <svg
-              className="w-4 h-4 text-neutral-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span>
-              {event.members?.length || 0}
-              {event.max_members && ` / ${event.max_members}`}
-            </span>
-          </div>
+        {/* Счетчик участников - нижний правый угол */}
+        <div className={`absolute bottom-2 right-2 md:bottom-3 md:right-3 flex items-center gap-1 md:gap-1.5 px-2 py-0.5 md:px-2.5 md:py-1 bg-[#F5F5F5] rounded-full md:rounded-[18px] text-xs md:text-sm font-medium text-neutral-900 z-10 transition-opacity duration-300 ${
+          isHovered && hasShortDescription ? "opacity-0" : "opacity-100"
+        }`}>
+          <img src={participantsIcon} alt="" className="w-3 h-3 md:w-4 md:h-4" />
+          <span>
+            {maxMembers && maxMembers > 0 
+              ? `${participantsCount} / ${maxMembers}` 
+              : participantsCount}
+          </span>
         </div>
       </div>
 
-      {/* Всплывающая подсказка с дополнительной информацией */}
-      <div className="absolute inset-x-4 bottom-full mb-2 p-3 bg-neutral-900 text-white text-sm rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-20 shadow-lg">
-        <p className="font-medium">{event.name}</p>
-        {event.short_description && (
-          <p className="mt-1 text-neutral-300 text-xs">{event.short_description}</p>
-        )}
-        <p className="mt-2 text-neutral-400 text-xs">
-          Участников: {event.members?.length || 0}
-          {event.max_members && ` из ${event.max_members}`}
+      {/* Контент */}
+      <div className="flex flex-col pt-2 pb-2 md:pb-4">
+        {/* Название */}
+        <h3 className="text-sm md:text-[20px] leading-tight md:leading-6 font-medium text-neutral-900 line-clamp-2">
+          {title}
+        </h3>
+
+        {/* Даты */}
+        <p className="mt-1 md:mt-2 text-xs md:text-[15px] leading-4 md:leading-5 text-[#2A2A2A]">
+          {formatDateRange(startDate, endDate)}
         </p>
-        {/* Стрелочка */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-8 border-transparent border-t-neutral-900" />
       </div>
     </Link>
   );
 }
 
+export default EventCard;

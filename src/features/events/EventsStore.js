@@ -11,18 +11,17 @@ export const EVENT_TABS = {
   PAST: "past",
 };
 
-// Статусы событий (соответствуют API: coming soon, active, completed, cancelled)
+// Статусы событий (только Активное и Прошедшее)
 export const EVENT_STATUS = {
   COMING_SOON: "coming soon",
   ACTIVE: "active",
-  PAST: "completed",
   COMPLETED: "completed",
-  CANCELLED: "cancelled",
-  REJECTED: "cancelled",
+  // Для обратной совместимости
+  PAST: "completed",
 };
 
 export const useEventsStore = create((set, get) => ({
-  // Текущая активная вкладка
+  // Текущая активная вкладка (по умолчанию "Мои события")
   activeTab: EVENT_TABS.MY,
 
   // Списки событий по категориям
@@ -34,8 +33,17 @@ export const useEventsStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
+  // Поисковый запрос
+  searchQuery: "",
+
   // Детальная информация о выбранном событии
   selectedEvent: null,
+
+  /**
+   * Установить поисковый запрос
+   * @param {string} query - Поисковая строка
+   */
+  setSearchQuery: (query) => set({ searchQuery: query }),
 
   /**
    * Установить активную вкладку
@@ -107,25 +115,27 @@ export const useEventsStore = create((set, get) => ({
       // Обновляем во всех списках (используем is_user_in_event из API)
       const updateList = (events) =>
         events.map((event) =>
-          event.id === eventId
+          String(event.id) === String(eventId)
             ? {
                 ...event,
                 is_user_in_event: isParticipating,
+                isParticipating,
               }
             : event
         );
 
       return {
         myEvents: isParticipating
-          ? [...state.myEvents, state.activeEvents.find((e) => e.id === eventId)].filter(Boolean)
-          : state.myEvents.filter((e) => e.id !== eventId),
+          ? [...state.myEvents, state.activeEvents.find((e) => String(e.id) === String(eventId))].filter(Boolean)
+          : state.myEvents.filter((e) => String(e.id) !== String(eventId)),
         activeEvents: updateList(state.activeEvents),
         pastEvents: updateList(state.pastEvents),
         selectedEvent:
-          state.selectedEvent?.id === eventId
+          String(state.selectedEvent?.id) === String(eventId)
             ? {
                 ...state.selectedEvent,
                 is_user_in_event: isParticipating,
+                isParticipating,
               }
             : state.selectedEvent,
       };

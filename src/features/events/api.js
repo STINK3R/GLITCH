@@ -1,46 +1,83 @@
 /**
  * API сервис для работы с событиями
- * Все методы подготовлены для подключения к FastAPI бэкенду
+ * Подключен к бэкенду http://185.211.5.223:1488/api
+ * 
+ * GET /api/events - основной эндпоинт для получения событий
+ * Параметр -1 возвращает события пользователя
  */
 
 import { http } from "../../services/http";
 
+/**
+ * Построить query string из объекта фильтров
+ */
+function buildQueryString(filters = {}) {
+  const params = new URLSearchParams();
+  
+  // Все фильтры передаём как есть, если они заданы
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.append(key, value);
+    }
+  });
+  
+  return params.toString();
+}
+
 export const eventsApi = {
   /**
-   * Получить все события
-   * @returns {Promise<Array>} Список всех событий
+   * Получить все события с фильтрами
+   * @param {Object} filters - Параметры фильтрации
+   * @returns {Promise<Array>} Список событий
    */
-  getAll: () => http("/api/events"),
-
-  /**
-   * Получить активные события (статусы: active, coming soon)
-   * @returns {Promise<Array>} Список активных событий
-   */
-  getActive: async () => {
-    const events = await http("/api/events");
-    return (events || []).filter(e => {
-      // Исключаем отменённые и завершённые
-      if (e.status === "cancelled" || e.status === "completed") {
-        return false;
-      }
-      // Активные и скоро начнутся
-      return e.status === "active" || e.status === "coming soon";
-    });
+  getAll: (filters = {}) => {
+    const queryString = buildQueryString(filters);
+    return http(`/api/events${queryString ? `?${queryString}` : ""}`);
   },
 
   /**
-   * Получить события пользователя (в которых он участвует)
-   * @returns {Promise<Array>} Список событий пользователя
+   * Получить активные события (все события без специальных фильтров)
+   * @param {Object} filters - Параметры фильтрации
+   * @returns {Promise<Array>} Список активных событий
    */
-  getMy: () => http("/api/events/my"),
+  getActive: (filters = {}) => {
+    const queryString = buildQueryString(filters);
+    return http(`/api/events${queryString ? `?${queryString}` : ""}`);
+  },
 
   /**
-   * Получить прошедшие события (статус: completed)
+   * Получить события пользователя (передаём -1)
+   * @param {Object} filters - Дополнительные фильтры
+   * @returns {Promise<Array>} Список событий пользователя
+   */
+  getMy: (filters = {}) => {
+    // Параметр -1 возвращает события пользователя
+    const queryParams = { ...filters, user_id: -1 };
+    const queryString = buildQueryString(queryParams);
+    return http(`/api/events${queryString ? `?${queryString}` : ""}`);
+  },
+
+  /**
+   * Получить прошедшие события (status=completed)
+   * @param {Object} filters - Дополнительные фильтры
    * @returns {Promise<Array>} Список прошедших событий
    */
-  getPast: async () => {
-    const events = await http("/api/events");
-    return (events || []).filter(e => e.status === "completed");
+  getPast: (filters = {}) => {
+    const queryParams = { ...filters, status: "completed" };
+    const queryString = buildQueryString(queryParams);
+    return http(`/api/events${queryString ? `?${queryString}` : ""}`);
+  },
+
+  /**
+   * Получить похожие события по типу
+   * @param {string} type - Тип события
+   * @param {number|string} excludeId - ID события для исключения
+   * @returns {Promise<Array>} Список похожих событий
+   */
+  getSimilar: async (type, excludeId) => {
+    const events = await http(`/api/events?type=${encodeURIComponent(type)}`);
+    const eventsList = Array.isArray(events) ? events : [];
+    return eventsList.filter((e) => String(e.id) !== String(excludeId)).slice(0, 4);
   },
 
   /**
@@ -56,19 +93,46 @@ export const eventsApi = {
    * @returns {Promise<Object>} Результат операции
    */
   confirmParticipation: (eventId) =>
-    http(`/api/events/${eventId}/participate`, {
+    http(`/api/events/${eventId}/join`, {
       method: "POST",
     }),
 
   /**
    * Отменить участие в событии
+   * API использует GET для /events/{id}/leave
    * @param {number|string} eventId - ID события
    * @returns {Promise<Object>} Результат операции
    */
   cancelParticipation: (eventId) =>
-    http(`/api/events/${eventId}/participate`, {
+    http(`/api/events/${eventId}/leave`, {
+      method: "GET",
+    }),
+
+  /**
+   * Добавить событие в избранное (лайк)
+   * @param {number|string} eventId - ID события
+   * @returns {Promise<Object>} Обновленное событие
+   */
+  likeEvent: (eventId) =>
+    http(`/api/events/${eventId}/like`, {
+      method: "POST",
+    }),
+
+  /**
+   * Удалить событие из избранного (убрать лайк)
+   * @param {number|string} eventId - ID события
+   * @returns {Promise<Object>} Обновленное событие
+   */
+  unlikeEvent: (eventId) =>
+    http(`/api/events/${eventId}/unlike`, {
       method: "DELETE",
     }),
+
+  /**
+   * Получить избранные события
+   * @returns {Promise<Array>} Список избранных событий
+   */
+  getFavorites: () => http("/api/events/favorites"),
 
   /**
    * Получить участников события
@@ -77,4 +141,3 @@ export const eventsApi = {
    */
   getParticipants: (eventId) => http(`/api/events/${eventId}/participants`),
 };
-
