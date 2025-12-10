@@ -120,7 +120,7 @@ class EventsService:
 
         
         session.add(event)
-        await session.commit()
+        await session.flush()
         await session.refresh(event)
 
         result = await session.execute(

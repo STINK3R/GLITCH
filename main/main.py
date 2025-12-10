@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 
 from admin.routers import admin
 from events.routers import events
+from notifications.routers import notifications
 from main.config.settings import settings
 from main.db.db import init_db
 from users.routers import auth
@@ -35,7 +36,7 @@ app.add_middleware(
 app.include_router(auth.router, tags=["auth"])
 app.include_router(events.router, tags=["events"])
 app.include_router(admin.router, tags=["admin"])
-
+app.include_router(notifications.router, tags=["notifications"])
 
 @app.get("/health")
 async def root():
