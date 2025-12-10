@@ -247,7 +247,7 @@ async def create_events_fixtures(session: AsyncSession, users: list[User]) -> li
             "type": template["type"],
             "status": status,
             "max_members": max_members,
-            "image_url": f"https://via.placeholder.com/400x300?text={template['type'].value}",
+            "image_url": f"images/based-image.png",
             "pay_data": pay_data,
             "invited_user_indices": invited_indices,
         })
