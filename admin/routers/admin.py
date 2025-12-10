@@ -3,7 +3,7 @@ from asyncio import create_task
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Body, File, HTTPException, status
+from fastapi import APIRouter, Body, File, HTTPException, status, Depends
 from fastapi.datastructures import UploadFile
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
@@ -17,6 +17,8 @@ from events.services.events import EventsService
 from events.services.images import ImagesService
 from main.config.settings import settings
 from main.db.db import SessionDependency
+from users.models.user import User
+from admin.dependencies.admin import admin_dependency
 from main.schemas.responses import MessageResponse
 from notifications.enums.notifications import NotificationType
 from notifications.services.email import EmailService
@@ -40,11 +42,10 @@ async def create_event_request(
     type: EventType = Body(...),
     city: EventCity = Body(...),
     invited_users: str = Body(..., description="JSON array of user IDs, e.g. [1, 2, 3]"),
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
     photo: UploadFile = File(...)
 ) -> EventResponse:
 
-    # Парсим и валидируем invited_users
     invited_users_list: List[int] = []
     try:
         invited_users_parsed = json.loads(invited_users)
@@ -135,7 +136,7 @@ async def update_event_request(
     city: EventCity = Body(None),
     photo: UploadFile = File(None),
     event_status: EventStatus = Body(None),
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> EventResponse:
 
     try:
@@ -207,7 +208,7 @@ async def update_event_request(
 async def get_event_members_csv_request(
     session: SessionDependency,
     event_id: int,
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> FileResponse:
     csv_path = await EventsService.export_event_members_to_csv(session, event_id)
     return FileResponse(path=str(csv_path), filename=f"members_event_{event_id}.csv")
@@ -217,7 +218,7 @@ async def get_event_members_csv_request(
 async def get_event_members_excel_request(
     session: SessionDependency,
     event_id: int,
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> FileResponse:
     excel_path = await EventsService.export_event_members_to_excel(session, event_id)
     return FileResponse(path=str(excel_path), filename=f"members_event_{event_id}.xlsx")
@@ -227,7 +228,7 @@ async def get_event_members_excel_request(
 async def get_event_comments_request(
     session: SessionDependency,
     event_id: int,
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> List[EventCommentAdminResponse]:
     comments = await EventsService.get_event_with_comments_and_members(session, event_id)
     comments_response = [EventCommentAdminResponse.model_validate(comment) for comment in comments.comments]
@@ -236,7 +237,7 @@ async def get_event_comments_request(
 @router.get('/users', response_model=List[UserAdminResponse], status_code=status.HTTP_200_OK)
 async def get_users_request(
     session: SessionDependency,
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> List[UserAdminResponse]:
     users = await UsersService.get_users(session)
     users_response = [UserAdminResponse.model_validate(user) for user in users]
@@ -247,7 +248,7 @@ async def get_users_request(
 async def update_user_request(
     session: SessionDependency,
     new_data: UserUpdateRequest,
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> UserAdminResponse:
     user = await UsersService.update_user(session, user_id=new_data.id, new_data=new_data)
     return UserAdminResponse.model_validate(user)
@@ -258,7 +259,7 @@ async def reset_user_password_request(
     session: SessionDependency,
     user_id: int,
     request: ResetUserPasswordRequest,
-    # admin: User = Depends(admin_dependency),
+    admin: User = Depends(admin_dependency),
 ) -> MessageResponse:
     user = await UsersService.get_user_by_id(session, user_id)
     await UsersService.reset_password(session, email=user.email, new_password=request.new_password)

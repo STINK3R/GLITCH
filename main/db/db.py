@@ -18,5 +18,9 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # Загружаем фикстуры после создания таблиц
+    from main.fixtures.loader import load_fixtures
+    await load_fixtures()
 
 SessionDependency = Annotated[AsyncSession, Depends(get_async_session)]
