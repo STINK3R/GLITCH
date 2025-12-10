@@ -10,6 +10,87 @@ from notifications.enums.notifications import NotificationType
 from notifications.services.notifications import NotificationsService
 from users.models.user import User
 
+# Шаблоны отзывов для разных типов событий
+COMMENT_TEMPLATES = {
+    EventType.BIRTHDAY: [
+        {"comment": "Отличное мероприятие! Было очень весело, хорошая организация и приятная атмосфера.", "rating": 5},
+        {"comment": "Понравилось, но можно было бы улучшить музыкальное сопровождение.", "rating": 4},
+        {"comment": "Хороший день рождения, все было на высоте. Спасибо организаторам!", "rating": 5},
+        {"comment": "Неплохо провели время, но ожидали больше активности.", "rating": 3},
+        {"comment": "Замечательное торжество! Отличная компания и веселье до утра.", "rating": 5},
+    ],
+    EventType.CONFERENCE: [
+        {"comment": "Очень полезная конференция! Много интересных докладов и полезных знакомств.", "rating": 5},
+        {"comment": "Хорошая организация, но некоторые доклады были слишком поверхностными.", "rating": 4},
+        {"comment": "Отличное мероприятие для профессионалов. Узнал много нового.", "rating": 5},
+        {"comment": "Неплохо, но ожидал больше практических кейсов.", "rating": 3},
+        {"comment": "Прекрасная конференция с качественными докладами и отличным нетворкингом.", "rating": 5},
+    ],
+    EventType.WORKSHOP: [
+        {"comment": "Отличный мастер-класс! Научился готовить новые блюда, все было понятно объяснено.", "rating": 5},
+        {"comment": "Хороший урок, но хотелось бы больше практики.", "rating": 4},
+        {"comment": "Понравилось! Шеф-повар очень профессионально объяснял все детали.", "rating": 5},
+        {"comment": "Неплохо, но некоторые техники были сложными для новичков.", "rating": 3},
+        {"comment": "Прекрасный мастер-класс! Теперь могу готовить как профессионал.", "rating": 5},
+    ],
+    EventType.PARTY: [
+        {"comment": "Незабываемая вечеринка! Отличная музыка, хорошая атмосфера, танцевали до утра.", "rating": 5},
+        {"comment": "Хорошая вечеринка, но было слишком многолюдно.", "rating": 4},
+        {"comment": "Отличный вечер! Диджей на высоте, все было просто супер.", "rating": 5},
+        {"comment": "Неплохо, но ожидали больше разнообразия в музыке.", "rating": 3},
+        {"comment": "Лучшая вечеринка сезона! Энергия зашкаливала, все было идеально.", "rating": 5},
+    ],
+    EventType.MEETING: [
+        {"comment": "Теплая встреча! Было приятно увидеть старых друзей и вспомнить студенческие годы.", "rating": 5},
+        {"comment": "Хорошая встреча, но времени на общение было маловато.", "rating": 4},
+        {"comment": "Отличное воссоединение! Много воспоминаний и новых знакомств.", "rating": 5},
+        {"comment": "Неплохо, но ожидали больше активности и развлечений.", "rating": 3},
+        {"comment": "Замечательная встреча! Все прошло в уютной атмосфере.", "rating": 5},
+    ],
+    EventType.TRAINING: [
+        {"comment": "Очень полезный тренинг! Получил много практических навыков для работы.", "rating": 5},
+        {"comment": "Хороший тренинг, но некоторые темы были слишком общими.", "rating": 4},
+        {"comment": "Отличное обучение! Тренер профессионал, все было структурировано и понятно.", "rating": 5},
+        {"comment": "Неплохо, но ожидал больше интерактива и практических упражнений.", "rating": 3},
+        {"comment": "Прекрасный тренинг! Изменил мой подход к работе и общению.", "rating": 5},
+    ],
+    EventType.CONCERT: [
+        {"comment": "Незабываемый концерт! Музыканты на высоте, звук отличный, атмосфера потрясающая.", "rating": 5},
+        {"comment": "Хороший концерт, но было слишком громко в некоторых местах.", "rating": 4},
+        {"comment": "Отличное шоу! Энергия зашкаливала, все было на высшем уровне.", "rating": 5},
+        {"comment": "Неплохо, но ожидали больше песен из старого репертуара.", "rating": 3},
+        {"comment": "Лучший концерт года! Незабываемые эмоции и драйв.", "rating": 5},
+    ],
+    EventType.FESTIVAL: [
+        {"comment": "Отличный фестиваль! Много вкусной еды, интересные мастер-классы, веселая атмосфера.", "rating": 5},
+        {"comment": "Хороший фестиваль, но было слишком многолюдно и очереди длинные.", "rating": 4},
+        {"comment": "Прекрасное мероприятие! Попробовал много новых блюд, все было вкусно.", "rating": 5},
+        {"comment": "Неплохо, но ожидали больше разнообразия в еде и развлечениях.", "rating": 3},
+        {"comment": "Замечательный фестиваль! Отличная организация и море впечатлений.", "rating": 5},
+    ],
+    EventType.EXCURSION: [
+        {"comment": "Увлекательная экскурсия! Гид очень интересно рассказывал, узнал много нового о городе.", "rating": 5},
+        {"comment": "Хорошая экскурсия, но маршрут был немного утомительным.", "rating": 4},
+        {"comment": "Отличная прогулка! Познавательно и красиво, рекомендую всем.", "rating": 5},
+        {"comment": "Неплохо, но ожидали больше интересных фактов и историй.", "rating": 3},
+        {"comment": "Прекрасная экскурсия! Профессиональный гид и интересные места.", "rating": 5},
+    ],
+    EventType.SEMINAR: [
+        {"comment": "Очень полезный семинар! Получил практические знания по инвестициям и финансам.", "rating": 5},
+        {"comment": "Хороший семинар, но некоторые темы были слишком сложными для новичков.", "rating": 4},
+        {"comment": "Отличное обучение! Спикер профессионал, много полезной информации.", "rating": 5},
+        {"comment": "Неплохо, но ожидал больше практических примеров и кейсов.", "rating": 3},
+        {"comment": "Прекрасный семинар! Изменил мое отношение к финансовому планированию.", "rating": 5},
+    ],
+    EventType.TOUR: [
+        {"comment": "Незабываемое путешествие! Красивые города, интересные экскурсии, комфортное размещение.", "rating": 5},
+        {"comment": "Хороший тур, но программа была слишком насыщенной, устали.", "rating": 4},
+        {"comment": "Отличное путешествие! Увидел много исторических мест, все было организовано хорошо.", "rating": 5},
+        {"comment": "Неплохо, но ожидали больше свободного времени для самостоятельных прогулок.", "rating": 3},
+        {"comment": "Прекрасный тур! Комфортно, познавательно, много впечатлений.", "rating": 5},
+    ],
+}
+
 
 async def create_events_fixtures(session: AsyncSession, users: list[User]) -> list[Event]:
     """Создает тестовые события для разработки"""
@@ -186,6 +267,11 @@ async def create_events_fixtures(session: AsyncSession, users: list[User]) -> li
     
     events_data = []
     
+    # Определяем, какие события будут завершенными (примерно 50%)
+    total_events = 50
+    completed_count = total_events // 2  # 25 завершенных событий
+    completed_indices = set(random.sample(range(total_events), completed_count))
+    
     # Создаем 50 событий
     for i in range(50):
         template = random.choice(event_templates)
@@ -211,18 +297,17 @@ async def create_events_fixtures(session: AsyncSession, users: list[User]) -> li
         end_date = start_date + timedelta(days=duration - 1)
         
         # Определяем статус
-        if start_date <= today:
+        # Если событие должно быть завершенным (50% событий)
+        if i in completed_indices:
+            start_date = today - timedelta(days=random.randint(5, 30))
+            end_date = start_date + timedelta(days=duration - 1)
+            status = EventStatus.COMPLETED
+        elif start_date <= today:
             status = EventStatus.ACTIVE
         elif days_offset > 30:
             status = EventStatus.COMING_SOON
         else:
             status = random.choice([EventStatus.COMING_SOON, EventStatus.ACTIVE])
-        
-        # Некоторые события завершены
-        if i < 5:
-            start_date = today - timedelta(days=random.randint(5, 30))
-            end_date = start_date + timedelta(days=duration - 1)
-            status = EventStatus.COMPLETED
         
         max_members = random.randint(*template["max_members_range"])
         
@@ -362,6 +447,43 @@ async def create_events_fixtures(session: AsyncSession, users: list[User]) -> li
                             user_id=regular_users[idx].id
                         )
                         session.add(like)
+        
+        await session.commit()
+        
+        # Добавляем отзывы на каждое завершенное событие (от 1 до 5 отзывов)
+        if event.status == EventStatus.COMPLETED and len(regular_users) > 0:
+            # Получаем список участников события
+            members_result = await session.execute(
+                select(EventMembers).where(EventMembers.event_id == event.id)
+            )
+            event_members = members_result.scalars().all()
+            
+            if event_members:
+                # Выбираем 1-5 участников для отзывов
+                num_comments = random.randint(1, min(5, len(event_members)))
+                selected_members = random.sample(event_members, num_comments)
+                
+                # Получаем шаблоны отзывов для типа события
+                comment_templates = COMMENT_TEMPLATES.get(event.type, COMMENT_TEMPLATES[EventType.MEETING])
+                
+                for member in selected_members:
+                    # Проверяем, не оставил ли уже этот пользователь отзыв
+                    check_result = await session.execute(
+                        select(EventComments).where(
+                            EventComments.event_id == event.id,
+                            EventComments.user_id == member.user_id
+                        )
+                    )
+                    if not check_result.scalar_one_or_none():
+                        # Выбираем случайный шаблон отзыва
+                        comment_template = random.choice(comment_templates)
+                        comment = EventComments(
+                            event_id=event.id,
+                            user_id=member.user_id,
+                            comment=comment_template["comment"],
+                            rating=comment_template["rating"]
+                        )
+                        session.add(comment)
         
         await session.commit()
         events.append(event)

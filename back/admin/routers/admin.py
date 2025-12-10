@@ -224,16 +224,6 @@ async def get_event_members_excel_request(
     return FileResponse(path=str(excel_path), filename=f"members_event_{event_id}.xlsx")
 
 
-@router.get('/events/{event_id}/comments', response_model=List[EventCommentAdminResponse], status_code=status.HTTP_200_OK)
-async def get_event_comments_request(
-    session: SessionDependency,
-    event_id: int,
-    admin: User = Depends(admin_dependency),
-) -> List[EventCommentAdminResponse]:
-    comments = await EventsService.get_event_with_comments_and_members(session, event_id)
-    comments_response = [EventCommentAdminResponse.model_validate(comment) for comment in comments.comments]
-    return comments_response
-
 @router.get('/users', response_model=List[UserAdminResponse], status_code=status.HTTP_200_OK)
 async def get_users_request(
     session: SessionDependency,
