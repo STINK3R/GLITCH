@@ -16,6 +16,17 @@ class EventMembers(Base):
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
 
 
+class EventInvitedUsers(Base):
+    __tablename__ = "event_invited_users"
+    __table_args__ = (
+        Index("idx_event_invited_users_event_id", "event_id"),
+        Index("idx_event_invited_users_user_id", "user_id"),
+    )
+
+    event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+
+
 class EventLikes(Base):
     __tablename__ = "event_likes"
     __table_args__ = (
@@ -26,6 +37,20 @@ class EventLikes(Base):
     event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
 
+class EventComments(Base):
+    __tablename__ = "event_comments"
+    __table_args__ = (
+        Index("idx_event_comments_event_id", "event_id"),
+        Index("idx_event_comments_user_id", "user_id"),
+    )
+
+    event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    comment = Column(String(1024), nullable=False)
+    rating = Column(Integer, nullable=True)
+
+    event = relationship("Event", back_populates="comments")
+    user = relationship("User", back_populates="comments")
 
 class Event(BaseModel):
     __tablename__ = "events"
@@ -59,7 +84,6 @@ class Event(BaseModel):
     status = Column(Enum(EventStatus), index=True, default=EventStatus.COMING_SOON)
 
     likes = relationship("User", secondary=EventLikes.__table__, back_populates="liked_events")
-
+    comments = relationship("EventComments", back_populates="event")
     notifications_relation = relationship("Notification", back_populates="event")
-
-# TODO: add comments and ratings
+    invited_users = relationship("User", secondary=EventInvitedUsers.__table__, back_populates="invited_events")

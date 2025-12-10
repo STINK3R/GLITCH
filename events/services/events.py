@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from events.enums.events import EventCity, EventStatus, EventType
-from events.models.events import Event, EventMembers
-from events.schemas.requests import EventRequest, EventUpdateRequest
+from events.models.events import Event, EventComments, EventInvitedUsers, EventMembers
+from events.schemas.requests import EventCommentRequest, EventRequest, EventUpdateRequest
 from main.config.settings import settings
 from users.models.user import User
 
@@ -20,23 +20,24 @@ class EventsService:
     async def get_events(
         session: AsyncSession,
         user_id: Optional[int] = None,
-        is_my_events: bool = False,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         max_members: Optional[int] = None,
         name: Optional[str] = None,
-        type: Optional[EventType] = None,
+        type: Optional[List[EventType]] = None,
         status: Optional[EventStatus] = None,
-        city: Optional[EventCity] = None,
+        city: Optional[List[EventCity]] = None,
         is_admin: bool = False,
+        current_user_id: Optional[int] = None,
     ):
-        query = select(Event).options(selectinload(Event.members), selectinload(Event.likes))
+        query = select(Event).options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
 
+        # Если указан user_id, фильтруем по участникам
         if user_id is not None:
             query = query.join(EventMembers).where(EventMembers.user_id == user_id)
 
         conditions = []
-        if not is_admin and not is_my_events:
+        if status != EventStatus.COMPLETED:
             conditions.append(Event.status != EventStatus.COMPLETED)
         if not is_admin:
             conditions.append(Event.status != EventStatus.CANCELLED)
@@ -51,16 +52,21 @@ class EventsService:
         if name is not None:
             conditions.append(Event.name == name)
         if type is not None:
-            conditions.append(Event.type == type)
+            if len(type) > 0:
+                conditions.append(Event.type.in_(type))
         if status is not None:
             conditions.append(Event.status == status)
         if city is not None:
-            conditions.append(Event.city == city)
+            if len(city) > 0:
+                conditions.append(Event.city.in_(city))
+
+        if not is_admin and current_user_id is not None:
+            query = query.join(EventInvitedUsers).where(EventInvitedUsers.user_id == current_user_id)
 
         if conditions:
             query = query.where(*conditions)
 
-        if user_id is not None:
+        if user_id is not None or (not is_admin and current_user_id is not None):
             query = query.distinct()
 
         result = await session.execute(query)
@@ -70,7 +76,7 @@ class EventsService:
     async def get_event_by_id(session: AsyncSession, event_id: int):
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members), selectinload(Event.likes))
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
             .where(Event.id == event_id)
         )
         event = result.scalar_one_or_none()
@@ -83,6 +89,21 @@ class EventsService:
 
     @staticmethod
     async def create_event(session: AsyncSession, event: EventRequest, image_path: str, status: EventStatus = EventStatus.COMING_SOON):
+        if event.invited_users:
+            from users.services.users import UsersService
+            invalid_user_ids = []
+            for user_id in event.invited_users:
+                try:
+                    await UsersService.get_user_by_id(session, user_id)
+                except HTTPException:
+                    invalid_user_ids.append(user_id)
+            
+            if invalid_user_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Users with IDs {invalid_user_ids} not found"
+                )
+        
         start_date = event.start_date
 
         now = datetime.now(timezone.utc).date()
@@ -91,7 +112,7 @@ class EventsService:
         else:
             status = EventStatus.COMING_SOON
 
-        event = Event(
+        event_obj = Event(
             name=event.name,
             image_url=image_path,
             start_date=event.start_date,
@@ -106,14 +127,23 @@ class EventsService:
             status=status,
         )
 
-        session.add(event)
+        session.add(event_obj)
         await session.commit()
-        await session.refresh(event)
+        await session.refresh(event_obj)
+
+        if event.invited_users:
+            for user_id in event.invited_users:
+                invited_user = EventInvitedUsers(
+                    event_id=event_obj.id,
+                    user_id=user_id
+                )
+                session.add(invited_user)
+            await session.commit()
 
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members), selectinload(Event.likes))
-            .where(Event.id == event.id)
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
+            .where(Event.id == event_obj.id)
         )
         return result.scalar_one()
 
@@ -124,6 +154,12 @@ class EventsService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Event not found"
+            )
+        invited_user_ids = [invited_user.id for invited_user in event.invited_users]
+        if user.id not in invited_user_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User was not invited to this event"
             )
 
         user_ids = [member.id for member in event.members]
@@ -156,7 +192,7 @@ class EventsService:
 
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members), selectinload(Event.likes))
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
             .where(Event.id == event.id)
         )
         return result.scalar_one()
@@ -182,7 +218,7 @@ class EventsService:
 
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members), selectinload(Event.likes))
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
             .where(Event.id == event.id)
         )
         return result.scalar_one()
@@ -267,7 +303,12 @@ class EventsService:
             )
         event.likes.append(user)
         await session.commit()
-        return event
+        result = await session.execute(
+            select(Event)
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
+            .where(Event.id == event.id)
+        )
+        return result.scalar_one()
 
     @staticmethod
     async def unlike_event(session: AsyncSession, event_id: int, user: User):
@@ -281,13 +322,83 @@ class EventsService:
             )
         event.likes.remove(user)
         await session.commit()
-        return event
-
-    @staticmethod
-    async def get_liked_events(session: AsyncSession, user: User) -> List[Event]:
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.likes), selectinload(Event.members))
-            .where(Event.likes.contains(user))
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.invited_users))
+            .where(Event.id == event.id)
         )
+        return result.scalar_one()
+
+    @staticmethod
+    async def get_liked_events(session: AsyncSession, user: User, is_admin: bool = False) -> List[Event]:
+        query = select(Event).options(selectinload(Event.likes), selectinload(Event.members), selectinload(Event.invited_users))
+        query = query.where(Event.likes.contains(user))
+        
+        if not is_admin:
+            query = query.join(EventInvitedUsers).where(EventInvitedUsers.user_id == user.id).distinct()
+        
+        result = await session.execute(query)
         return result.scalars().all()
+
+    @staticmethod
+    async def comment_event(session: AsyncSession, event_id: int, user: User, comment: EventCommentRequest):
+        event = await EventsService.get_event_by_id(session, event_id)
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+
+        if user.id not in [member.id for member in event.members]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User not a member of the event"
+            )
+        if event.status != EventStatus.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Event not completed"
+            )
+        
+        existing_comment_result = await session.execute(
+            select(EventComments)
+            .where(EventComments.event_id == event_id)
+            .where(EventComments.user_id == user.id)
+        )
+        existing_comment = existing_comment_result.scalar_one_or_none()
+        
+        if existing_comment:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User already commented the event"
+            )
+        
+        comment_obj = EventComments(
+            event_id=event_id,
+            user_id=user.id,
+            comment=comment.comment,
+            rating=comment.rating,
+        )
+        session.add(comment_obj)
+        await session.commit()
+        result = await session.execute(
+            select(Event)
+            .options(selectinload(Event.members), selectinload(Event.likes), selectinload(Event.comments), selectinload(Event.invited_users))
+            .where(Event.id == event_id)
+        )
+        return result.scalar_one()
+    
+    @staticmethod
+    async def get_event_with_comments_and_members(session: AsyncSession, event_id: int) -> Event:
+        result = await session.execute(
+            select(Event)
+            .options(selectinload(Event.comments), selectinload(Event.members))
+            .where(Event.id == event_id)
+        )
+        event = result.scalar_one_or_none()
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found"
+            )
+        return event

@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
 from admin.schemas.requests import ResetUserPasswordRequest, UserUpdateRequest
-from admin.schemas.responses import UserAdminResponse
+from admin.schemas.responses import EventCommentAdminResponse, UserAdminResponse
 from events.enums.events import EventCity, EventStatus, EventType
 from events.schemas.requests import EventRequest, EventUpdateRequest
 from events.schemas.responses import EventResponse
@@ -39,10 +39,40 @@ async def create_event_request(
     max_members: Optional[int] = Body(None),
     type: EventType = Body(...),
     city: EventCity = Body(...),
-    invited_users: Optional[str] = Body(None),
+    invited_users: str = Body(..., description="JSON array of user IDs, e.g. [1, 2, 3]"),
     # admin: User = Depends(admin_dependency),
     photo: UploadFile = File(...)
 ) -> EventResponse:
+
+    # Парсим и валидируем invited_users
+    invited_users_list: List[int] = []
+    try:
+        invited_users_parsed = json.loads(invited_users)
+        if not isinstance(invited_users_parsed, list):
+            raise ValueError("invited_users must be a JSON array")
+        if len(invited_users_parsed) == 0:
+            raise ValueError("invited_users must contain at least one user ID")
+        invited_users_list = [int(uid) for uid in invited_users_parsed]
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid invited_users format: {str(e)}. Expected JSON array with at least one user ID, e.g. [1, 2, 3]"
+        )
+
+    invalid_user_ids = []
+    valid_users = []
+    for user_id in invited_users_list:
+        try:
+            user = await UsersService.get_user_by_id(session, user_id)
+            valid_users.append(user)
+        except HTTPException:
+            invalid_user_ids.append(user_id)
+    
+    if invalid_user_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Users with IDs {invalid_user_ids} not found"
+        )
 
     try:
         event = EventRequest(
@@ -55,35 +85,17 @@ async def create_event_request(
             pay_data=pay_data,
             max_members=max_members,
             type=type,
-            city=city
+            city=city,
+            invited_users=invited_users_list
         )
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
-
-    invited_users_list: Optional[List[int]] = None
-    if invited_users:
-        try:
-            invited_users_list = json.loads(invited_users)
-            if not isinstance(invited_users_list, list):
-                raise ValueError("invited_users must be a JSON array")
-            invited_users_list = [int(uid) for uid in invited_users_list]
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid invited_users format: {str(e)}. Expected JSON array, e.g. [1, 2, 3]"
-            )
 
     image_path = await ImagesService.save_image(photo)
 
     event_obj = await EventsService.create_event(session, event, image_path)
 
-    if invited_users_list:
-        for user_id in invited_users_list:
-            try:
-                user = await UsersService.get_user_by_id(session, user_id)
-            except HTTPException:
-                continue
-            if user:
+    for user in valid_users:
                 formatted_event_date = event.start_date.strftime("%d.%m.%Y")
                 create_task(EmailService.send_event_created_email(
                     email=user.email,
@@ -102,7 +114,7 @@ async def create_event_request(
                     event_id=event_obj.id,
                     type=NotificationType.EVENT_CREATED
                 )
-        await session.commit()
+    await session.commit()
 
     event_response = EventResponse.model_validate(event_obj)
     return event_response.model_copy(update={'is_user_in_event': False})
@@ -210,6 +222,16 @@ async def get_event_members_excel_request(
     excel_path = await EventsService.export_event_members_to_excel(session, event_id)
     return FileResponse(path=str(excel_path), filename=f"members_event_{event_id}.xlsx")
 
+
+@router.get('/events/{event_id}/comments', response_model=List[EventCommentAdminResponse], status_code=status.HTTP_200_OK)
+async def get_event_comments_request(
+    session: SessionDependency,
+    event_id: int,
+    # admin: User = Depends(admin_dependency),
+) -> List[EventCommentAdminResponse]:
+    comments = await EventsService.get_event_with_comments_and_members(session, event_id)
+    comments_response = [EventCommentAdminResponse.model_validate(comment) for comment in comments.comments]
+    return comments_response
 
 @router.get('/users', response_model=List[UserAdminResponse], status_code=status.HTTP_200_OK)
 async def get_users_request(

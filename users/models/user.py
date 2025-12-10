@@ -23,3 +23,5 @@ class User(BaseModel):
 
     events = relationship("Event", secondary="event_members", back_populates="members")
     liked_events = relationship("Event", secondary="event_likes", back_populates="likes")
+    comments = relationship("EventComments", back_populates="user")
+    invited_events = relationship("Event", secondary="event_invited_users", back_populates="invited_users")
