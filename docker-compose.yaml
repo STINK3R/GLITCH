@@ -2,9 +2,15 @@ version: '3.8'
 
 services:
   
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    networks:
+      - app-network
   api:
     build:
-      context: .
+      context: ./back
       dockerfile: Dockerfile
     depends_on:
       - db
@@ -26,11 +32,12 @@ services:
   nginx:
     image: nginx:latest
     ports:
-      - "8000:80"
+      - "3000:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - api
+      - frontend
     networks:
       - app-network
 
