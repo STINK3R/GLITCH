@@ -1,36 +1,26 @@
 /**
  * Хелпер для формирования URL изображений
- * Обрабатывает относительные и абсолютные пути
+ * Использует эндпоинт /api/media/{photo_url}
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 /**
- * Получить полный URL изображения
- * @param {string} url - URL изображения из API
+ * Получить полный URL изображения через API media
+ * @param {string} photoUrl - URL/путь изображения из API
  * @returns {string|null} Полный URL или null
  */
-export function getImageUrl(url) {
-  if (!url) return null;
+export function getImageUrl(photoUrl) {
+  if (!photoUrl) return null;
   
-  console.log("getImageUrl input:", url);
-  
-  // Если уже полный URL
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    console.log("getImageUrl output (full URL):", url);
-    return url;
+  // Если уже полный URL - возвращаем как есть
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return photoUrl;
   }
   
-  // Если относительный путь - добавляем базовый URL
-  // В dev режиме прокси обработает /uploads и /static
-  // В production нужно будет использовать полный URL бэкенда
-  let result;
-  if (url.startsWith('/')) {
-    result = API_BASE_URL + url;
-  } else {
-    result = API_BASE_URL + '/' + url;
-  }
+  // Убираем начальный слеш если есть
+  const cleanPath = photoUrl.startsWith('/') ? photoUrl.slice(1) : photoUrl;
   
-  console.log("getImageUrl output:", result);
-  return result;
+  // Формируем URL через /api/media/
+  return `${API_BASE_URL}/api/media/${cleanPath}`;
 }

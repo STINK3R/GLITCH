@@ -78,15 +78,34 @@ const DragIcon = () => (
   </svg>
 );
 
+// Иконка поиска
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="9" r="6" />
+    <path d="M13.5 13.5L17 17" strokeLinecap="round" />
+  </svg>
+);
+
+// Иконка экспорта
+const ExportIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M4 1h8l3 3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8 6v6M5 9l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export function EventsManagement() {
   const [activeTab, setActiveTab] = useState("active");
   const [events, setEvents] = useState([]);
+  const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, eventId: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const menuRef = useRef(null);
   const toast = useToast();
 
@@ -102,7 +121,7 @@ export function EventsManagement() {
       } else if (activeTab === "cancelled") {
         data = await adminApi.getCancelledEvents();
       }
-      setEvents(data || []);
+      setAllEvents(data || []);
     } catch (error) {
       console.error("Ошибка загрузки событий:", error);
       toast.error("Ошибка загрузки событий");
@@ -110,6 +129,19 @@ export function EventsManagement() {
       setLoading(false);
     }
   };
+
+  // Применение поиска
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setEvents(allEvents);
+    } else {
+      const query = searchQuery.toLowerCase().trim();
+      const filtered = allEvents.filter((event) =>
+        (event.name || "").toLowerCase().includes(query)
+      );
+      setEvents(filtered);
+    }
+  }, [searchQuery, allEvents]);
 
   useEffect(() => {
     loadEvents();
@@ -126,9 +158,73 @@ export function EventsManagement() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Экспорт участников события в CSV (через API)
+  const exportEventMembersCSV = async (event) => {
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_BASE_URL}/api/events/${event.id}/members-csv`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки файла');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${event.name}_участники.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Файл CSV успешно скачан");
+    } catch (error) {
+      console.error("Ошибка экспорта CSV:", error);
+      toast.error("Ошибка экспорта в CSV");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Экспорт участников события в Excel (через API)
+  const exportEventMembersXLSX = async (event) => {
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_BASE_URL}/api/events/${event.id}/members-excel`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки файла');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${event.name}_участники.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Файл Excel успешно скачан");
+    } catch (error) {
+      console.error("Ошибка экспорта Excel:", error);
+      toast.error("Ошибка экспорта в Excel");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Подсчет событий
-  const activeCount = activeTab === "active" ? events.length : 0;
-  const pastCount = activeTab === "past" ? events.length : 0;
+  const activeCount = activeTab === "active" ? allEvents.length : 0;
+  const pastCount = activeTab === "past" ? allEvents.length : 0;
 
   // Открыть модалку создания
   const handleCreate = () => {
@@ -223,6 +319,22 @@ export function EventsManagement() {
         </button>
       </div>
 
+      {/* Поиск по названию */}
+      <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+            <SearchIcon />
+          </span>
+          <input
+            type="text"
+            placeholder="Поиск по названию события..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+          />
+        </div>
+      </div>
+
       {/* Контент */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -243,14 +355,6 @@ export function EventsManagement() {
               : <>Данная страница пока пустая.<br />Добавьте сюда событие</>
             }
           </p>
-          {activeTab === "active" && (
-            <button
-              onClick={handleCreate}
-              className="mt-6 px-8 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors"
-            >
-              Добавить событие
-            </button>
-          )}
         </div>
       ) : (
         /* Список событий */
@@ -304,7 +408,7 @@ export function EventsManagement() {
                       <DotsIcon />
                     </button>
                     {openMenuId === event.id && (
-                      <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
+                      <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
                         <button
                           onClick={() => handleEdit(event)}
                           className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
@@ -312,6 +416,29 @@ export function EventsManagement() {
                           <EditIcon />
                           Редактировать
                         </button>
+                        <div className="border-t border-neutral-100 my-1"></div>
+                        <button
+                          onClick={() => {
+                            exportEventMembersCSV(event);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                        >
+                          <ExportIcon />
+                          CSV
+                        </button>
+                        <button
+                          onClick={() => {
+                            exportEventMembersXLSX(event);
+                            setOpenMenuId(null);
+                          }}
+                          disabled={isExporting}
+                          className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <ExportIcon />
+                          Excel
+                        </button>
+                        <div className="border-t border-neutral-100 my-1"></div>
                         <button
                           onClick={() => {
                             setDeleteConfirm({ isOpen: true, eventId: event.id });
@@ -354,7 +481,7 @@ export function EventsManagement() {
                 </button>
 
                 {openMenuId === event.id && (
-                  <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
                     <button
                       onClick={() => handleEdit(event)}
                       className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
@@ -362,6 +489,29 @@ export function EventsManagement() {
                       <EditIcon />
                       Редактировать
                     </button>
+                    <div className="border-t border-neutral-100 my-1"></div>
+                    <button
+                      onClick={() => {
+                        exportEventMembersCSV(event);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                    >
+                      <ExportIcon />
+                      Экспорт в CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        exportEventMembersXLSX(event);
+                        setOpenMenuId(null);
+                      }}
+                      disabled={isExporting}
+                      className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <ExportIcon />
+                      Экспорт в Excel
+                    </button>
+                    <div className="border-t border-neutral-100 my-1"></div>
                     <button
                       onClick={() => {
                         setDeleteConfirm({ isOpen: true, eventId: event.id });
@@ -378,15 +528,18 @@ export function EventsManagement() {
             </div>
           ))}
 
-          {/* Кнопка добавления */}
-          <button
-            onClick={handleCreate}
-            className="w-full max-w-xs mx-auto block px-8 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors mt-6"
-          >
-            Добавить событие
-          </button>
         </div>
       )}
+
+      {/* Кнопка добавления - закреплена в левом нижнем углу */}
+      <div className="fixed bottom-6 left-6 lg:left-[280px] z-30">
+        <button
+          onClick={handleCreate}
+          className="px-8 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors shadow-lg"
+        >
+          Добавить событие
+        </button>
+      </div>
 
       {/* Модальное окно создания/редактирования */}
       <EventModal
