@@ -12,6 +12,7 @@ import {
 } from "../../features/events/useEvents";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { getImageUrl } from "../../utils/imageUrl";
 
 // Конфигурация статусов
 const STATUS_CONFIG = {
@@ -193,10 +194,10 @@ export function EventDetailPage() {
 
         {/* Главное изображение */}
         <div className="relative aspect-[21/9] rounded-2xl overflow-hidden bg-neutral-100 mb-8">
-          {event.image ? (
+          {event.image_url ? (
             <img
-              src={event.image}
-              alt={event.title}
+              src={getImageUrl(event.image_url)}
+              alt={event.name}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -230,7 +231,7 @@ export function EventDetailPage() {
 
         {/* Заголовок и мета-информация */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900">{event.title}</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">{event.name}</h1>
 
           <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-neutral-600">
             {/* Даты */}
@@ -249,8 +250,8 @@ export function EventDetailPage() {
                 />
               </svg>
               <div>
-                <div>Начало: {formatDateTime(event.startDate)}</div>
-                <div>Окончание: {formatDateTime(event.endDate)}</div>
+                <div>Начало: {formatDateTime(event.start_date)}</div>
+                <div>Окончание: {formatDateTime(event.end_date)}</div>
               </div>
             </div>
 
@@ -270,13 +271,13 @@ export function EventDetailPage() {
                 />
               </svg>
               <span>
-                {event.participantsCount} участник(ов)
-                {event.maxParticipants && ` из ${event.maxParticipants}`}
+                {event.members?.length || 0} участник(ов)
+                {event.max_members && ` из ${event.max_members}`}
               </span>
             </div>
 
             {/* Индикатор участия */}
-            {event.isParticipating && (
+            {event.is_user_in_event && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-violet-100 text-violet-700 rounded-full">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path
@@ -302,7 +303,7 @@ export function EventDetailPage() {
         </div>
 
         {/* Данные по оплате */}
-        {event.paymentInfo && (
+        {event.pay_data && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
@@ -325,7 +326,7 @@ export function EventDetailPage() {
                   Информация об оплате
                 </h3>
                 <p className="mt-2 text-amber-800 whitespace-pre-wrap">
-                  {event.paymentInfo}
+                  {event.pay_data}
                 </p>
               </div>
             </div>
@@ -335,7 +336,7 @@ export function EventDetailPage() {
         {/* Кнопки действий */}
         {isActive && (
           <div className="flex gap-4">
-            {event.isParticipating ? (
+            {event.is_user_in_event ? (
               <button
                 onClick={() => setShowCancelModal(true)}
                 disabled={isPending}
@@ -371,7 +372,7 @@ export function EventDetailPage() {
             ) : (
               <button
                 onClick={handleConfirmParticipation}
-                disabled={isPending || (event.maxParticipants && event.participantsCount >= event.maxParticipants)}
+                disabled={isPending || (event.max_members && (event.members?.length || 0) >= event.max_members)}
                 className="flex-1 sm:flex-none px-6 py-3 text-base font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-700 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {confirmMutation.isPending ? (
@@ -397,7 +398,7 @@ export function EventDetailPage() {
                     </svg>
                     Подтверждение...
                   </span>
-                ) : event.maxParticipants && event.participantsCount >= event.maxParticipants ? (
+                ) : event.max_members && (event.members?.length || 0) >= event.max_members ? (
                   "Мест нет"
                 ) : (
                   "Подтвердить участие"

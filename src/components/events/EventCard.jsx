@@ -5,6 +5,7 @@
 
 import { Link } from "react-router-dom";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
+import { getImageUrl } from "../../utils/imageUrl";
 
 // Конфигурация статусов для отображения
 const STATUS_CONFIG = {
@@ -65,10 +66,10 @@ export function EventCard({ event }) {
     >
       {/* Изображение */}
       <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
-        {event.image ? (
+        {event.image_url ? (
           <img
-            src={event.image}
-            alt={event.title}
+            src={getImageUrl(event.image_url)}
+            alt={event.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
@@ -101,7 +102,7 @@ export function EventCard({ event }) {
         </div>
 
         {/* Индикатор участия */}
-        {event.isParticipating && (
+        {event.is_user_in_event && (
           <div className="absolute top-3 left-3">
             <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-violet-600 text-white rounded-full">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
@@ -121,13 +122,13 @@ export function EventCard({ event }) {
       <div className="flex flex-col flex-1 p-4">
         {/* Название */}
         <h3 className="text-lg font-semibold text-neutral-900 line-clamp-2 group-hover:text-violet-600 transition-colors">
-          {event.title}
+          {event.name}
         </h3>
 
         {/* Краткое описание */}
-        {event.shortDescription && (
+        {event.short_description && (
           <p className="mt-1 text-sm text-neutral-500 line-clamp-2">
-            {event.shortDescription}
+            {event.short_description}
           </p>
         )}
 
@@ -148,7 +149,7 @@ export function EventCard({ event }) {
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            <span>{formatDateRange(event.startDate, event.endDate)}</span>
+            <span>{formatDateRange(event.start_date, event.end_date)}</span>
           </div>
 
           {/* Участники */}
@@ -167,8 +168,8 @@ export function EventCard({ event }) {
               />
             </svg>
             <span>
-              {event.participantsCount}
-              {event.maxParticipants && ` / ${event.maxParticipants}`}
+              {event.members?.length || 0}
+              {event.max_members && ` / ${event.max_members}`}
             </span>
           </div>
         </div>
@@ -176,13 +177,13 @@ export function EventCard({ event }) {
 
       {/* Всплывающая подсказка с дополнительной информацией */}
       <div className="absolute inset-x-4 bottom-full mb-2 p-3 bg-neutral-900 text-white text-sm rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-20 shadow-lg">
-        <p className="font-medium">{event.title}</p>
-        {event.shortDescription && (
-          <p className="mt-1 text-neutral-300 text-xs">{event.shortDescription}</p>
+        <p className="font-medium">{event.name}</p>
+        {event.short_description && (
+          <p className="mt-1 text-neutral-300 text-xs">{event.short_description}</p>
         )}
         <p className="mt-2 text-neutral-400 text-xs">
-          Участников: {event.participantsCount}
-          {event.maxParticipants && ` из ${event.maxParticipants}`}
+          Участников: {event.members?.length || 0}
+          {event.max_members && ` из ${event.max_members}`}
         </p>
         {/* Стрелочка */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-8 border-transparent border-t-neutral-900" />
