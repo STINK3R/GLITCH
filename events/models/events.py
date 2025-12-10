@@ -15,6 +15,15 @@ class EventMembers(Base):
     event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
 
+class EventLikes(Base):
+    __tablename__ = "event_likes"
+    __table_args__ = (
+        Index("idx_event_likes_event_id", "event_id"),
+        Index("idx_event_likes_user_id", "user_id"),
+    )
+
+    event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
 
 class Event(BaseModel):
     __tablename__ = "events"
@@ -47,6 +56,7 @@ class Event(BaseModel):
     members = relationship("User", secondary=EventMembers.__table__, back_populates="events")
     status = Column(Enum(EventStatus), index=True, default=EventStatus.COMING_SOON)
 
+    likes = relationship("User", secondary=EventLikes.__table__, back_populates="liked_events")
 
-# TODO: add liked events
+
 # TODO: add comments and ratings

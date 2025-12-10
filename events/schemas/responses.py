@@ -24,3 +24,4 @@ class EventResponse(BaseModel):
     type: EventType
     members: list[UserResponse]
     is_user_in_event: bool = False
+    is_user_liked_event: bool = False
