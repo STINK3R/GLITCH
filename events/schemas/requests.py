@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, model_validator
@@ -22,6 +22,15 @@ class EventRequest(BaseModel):
     def validate_dates(self) -> 'EventRequest':
         if self.start_date >= self.end_date:
             raise ValueError("Start date must be before end date")
+        end_date = self.end_date
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
+        elif end_date.tzinfo != timezone.utc:
+            end_date = end_date.astimezone(timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        if end_date < now:
+            raise ValueError("End date must be in the future")
         return self
 
 

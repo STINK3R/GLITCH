@@ -20,6 +20,7 @@ class EventsService:
     async def get_events(
         session: AsyncSession,
         user_id: Optional[int] = None,
+        is_my_events: bool = False,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         max_members: Optional[int] = None,
@@ -35,6 +36,8 @@ class EventsService:
             query = query.join(EventMembers).where(EventMembers.user_id == user_id)
 
         conditions = []
+        if not is_admin and not is_my_events:
+            conditions.append(Event.status != EventStatus.COMPLETED)
         if not is_admin:
             conditions.append(Event.status != EventStatus.CANCELLED)
         if start_date is not None:
@@ -87,7 +90,19 @@ class EventsService:
         return event
 
     @staticmethod
-    async def create_event(session: AsyncSession, event: EventRequest, image_path: str):
+    async def create_event(session: AsyncSession, event: EventRequest, image_path: str, status: EventStatus = EventStatus.COMING_SOON):
+        start_date = event.start_date
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        elif start_date.tzinfo != timezone.utc:
+            start_date = start_date.astimezone(timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        if start_date <= now:
+            status = EventStatus.ACTIVE
+        else:
+            status = EventStatus.COMING_SOON
+        
         event = Event(
             name=event.name,
             image_url=image_path,
@@ -100,7 +115,10 @@ class EventsService:
             location=event.location,
             city=event.city,
             type=event.type,
+            status=status,
         )
+
+        
         session.add(event)
         await session.commit()
         await session.refresh(event)
@@ -132,6 +150,18 @@ class EventsService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Event is full"
+            )
+        
+        if event.status == EventStatus.CANCELLED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Event is cancelled"
+            )
+        
+        if event.status == EventStatus.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Event is completed"
             )
 
         event.members.append(user)
@@ -197,6 +227,7 @@ class EventsService:
         event.max_members = event_request.max_members if event_request.max_members else event.max_members
         event.city = event_request.city if event_request.city else event.city
         event.location = event_request.location if event_request.location else event.location
+        event.status = event_request.status if event_request.status else event.status
         await session.commit()
         await session.refresh(event)
         return event

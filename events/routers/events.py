@@ -32,6 +32,9 @@ async def get_events_request(
 
     if user_id == -1:
         user_id = user.id
+        is_my_events = True
+    else:
+        is_my_events = False
 
     events = await EventsService.get_events(
         session=session,
@@ -43,7 +46,8 @@ async def get_events_request(
         type=type,
         status=status,
         city=city,
-        is_admin=user.role == UserRole.ADMIN
+        is_admin=user.role == UserRole.ADMIN,
+        is_my_events=is_my_events 
     )
 
     result = []
@@ -74,7 +78,6 @@ async def join_event_request(
     event_id: int,
     user: User = Depends(user_dependency),
 ) -> EventResponse:
-
     event_obj = await EventsService.join_event(session, event_id, user=user)
     event_response = EventResponse.model_validate(event_obj)
 
@@ -87,9 +90,9 @@ async def join_event_request(
         create_task(EmailService.send_event_member_confirmed_email(
             email=email,
             event_name=event_obj.name,
-            event_date=event_date,
-            event_time=event_time,
-            event_location=event_location,
+            event_date=event_date.strftime("%d.%m.%Y") if event_date else "",
+            event_time=event_time.strftime("%H:%M") if event_time else "",
+            event_location=event_location if event_location else "Не указано",
             member_name=user.name,
             new_members_count=len(event_obj.members),
             event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
@@ -117,9 +120,9 @@ async def leave_event_request(
         create_task(EmailService.send_event_member_cancelled_email(
             email=email,
             event_name=event_obj.name,
-            event_date=event_date,
-            event_time=event_time,
-            event_location=event_location,
+            event_date=event_date.strftime("%d.%m.%Y") if event_date else "",
+            event_time=event_time.strftime("%H:%M") if event_time else "",
+            event_location=event_location if event_location else "Не указано",
             member_name=user.name,
             new_members_count=len(event_obj.members),
             event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"

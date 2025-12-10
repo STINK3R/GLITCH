@@ -9,6 +9,7 @@ from events.routers import events
 from main.config.settings import settings
 from main.db.db import init_db
 from users.routers import auth
+from events.scheduler.events import scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,6 +19,7 @@ logging.basicConfig(
 
 async def lifespan(app: FastAPI):
     await init_db()
+    scheduler.start()
     yield
 
 app = FastAPI(lifespan=lifespan, root_path="/api")

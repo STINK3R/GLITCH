@@ -45,9 +45,8 @@ class Event(BaseModel):
     type = Column(Enum(EventType), nullable=False, index=True, default=EventType.OTHER)
 
     members = relationship("User", secondary=EventMembers.__table__, back_populates="events")
-    status = Column(Enum(EventStatus), index=True, default=EventStatus.ACTIVE)
+    status = Column(Enum(EventStatus), index=True, default=EventStatus.COMING_SOON)
 
 
 # TODO: add liked events
 # TODO: add comments and ratings
-# TODO: add scheduler for events states and send notifications to users
