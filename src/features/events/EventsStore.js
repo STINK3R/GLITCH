@@ -13,6 +13,7 @@ export const EVENT_TABS = {
 
 // Статусы событий (только Активное и Прошедшее)
 export const EVENT_STATUS = {
+  COMING_SOON: "coming soon",
   ACTIVE: "active",
   COMPLETED: "completed",
   // Для обратной совместимости
@@ -111,7 +112,7 @@ export const useEventsStore = create((set, get) => ({
    */
   updateEventParticipation: (eventId, isParticipating) => {
     set((state) => {
-      // Обновляем во всех списках
+      // Обновляем во всех списках (используем is_user_in_event из API)
       const updateList = (events) =>
         events.map((event) =>
           String(event.id) === String(eventId)

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
 import { useToggleFavorite } from "../../features/events/useEvents";
+import { getImageUrl } from "../../utils/imageUrl";
 
 import heartIcon from "/icons/heart-on-events-card.svg";
 import heartFilledIcon from "/icons/add-heart-on-events-card.svg";

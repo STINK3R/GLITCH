@@ -23,7 +23,9 @@ export function useAuth() {
   async function login(email, password) {
     // API использует email
     const data = await authApi.login(email, password);
-    loginStore(data, { email });
+    // API возвращает user в ответе с полем role
+    const userData = data.user || { email };
+    loginStore(data, userData);
     return data;
   }
 
