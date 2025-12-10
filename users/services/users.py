@@ -1,14 +1,14 @@
-from typing import List, Optional
+from typing import List
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from admin.schemas.requests import UserUpdateRequest
+from users.enums.user import UserRole
 from users.models.user import User
 from users.schemas.requests import RegisterRequest
 from users.services.auth import AuthService
-from users.enums.user import UserRole
 
 
 class UsersService:
@@ -21,7 +21,7 @@ class UsersService:
         return result.scalars().all()
 
     @staticmethod
-    async def get_user_by_email(session: AsyncSession, email: str) -> Optional[User]:
+    async def get_user_by_email(session: AsyncSession, email: str) -> User:
         result = await session.execute(
             select(User).where(User.email == email)
         )
@@ -34,7 +34,7 @@ class UsersService:
         return user
 
     @staticmethod
-    async def get_user_by_id(session: AsyncSession, user_id: int) -> Optional[User]:
+    async def get_user_by_id(session: AsyncSession, user_id: int) -> User:
         result = await session.execute(
             select(User).where(User.id == user_id)
         )
@@ -65,7 +65,7 @@ class UsersService:
     @staticmethod
     async def update_user(session: AsyncSession, user_id: int, new_data: UserUpdateRequest) -> User:
         user = await UsersService.get_user_by_id(session, user_id)
-        
+
         user.name = new_data.name.capitalize() if new_data.name else user.name
         user.surname = new_data.surname.capitalize() if new_data.surname else user.surname
         user.father_name = new_data.father_name.capitalize() if new_data.father_name else user.father_name
@@ -87,7 +87,7 @@ class UsersService:
     @staticmethod
     async def verify_user_password(session: AsyncSession, email: str, password: str) -> tuple[bool, User]:
         user = await UsersService.get_user_by_email(session, email)
-        
+
         return AuthService.verify_hash(password, user.hashed_password), user
 
     @staticmethod

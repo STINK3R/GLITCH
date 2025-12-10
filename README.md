@@ -11,8 +11,6 @@ SMTP_FROM_NAME=
 
 
 TODO:
-Fix date filers (Very High)
-
 Add comments and rating in events (High)
 User profile (High)
 

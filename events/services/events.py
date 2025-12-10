@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -21,8 +21,8 @@ class EventsService:
         session: AsyncSession,
         user_id: Optional[int] = None,
         is_my_events: bool = False,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
         max_members: Optional[int] = None,
         name: Optional[str] = None,
         type: Optional[EventType] = None,
@@ -67,14 +67,6 @@ class EventsService:
         return result.scalars().all()
 
     @staticmethod
-    def _to_naive_datetime(dt: datetime | None) -> datetime | None:
-        if dt is None:
-            return None
-        if dt.tzinfo is not None:
-            return dt.astimezone(timezone.utc).replace(tzinfo=None)
-        return dt
-
-    @staticmethod
     async def get_event_by_id(session: AsyncSession, event_id: int):
         result = await session.execute(
             select(Event)
@@ -92,22 +84,18 @@ class EventsService:
     @staticmethod
     async def create_event(session: AsyncSession, event: EventRequest, image_path: str, status: EventStatus = EventStatus.COMING_SOON):
         start_date = event.start_date
-        if start_date.tzinfo is None:
-            start_date = start_date.replace(tzinfo=timezone.utc)
-        elif start_date.tzinfo != timezone.utc:
-            start_date = start_date.astimezone(timezone.utc)
-        
-        now = datetime.now(timezone.utc)
+
+        now = datetime.now(timezone.utc).date()
         if start_date <= now:
             status = EventStatus.ACTIVE
         else:
             status = EventStatus.COMING_SOON
-        
+
         event = Event(
             name=event.name,
             image_url=image_path,
-            start_date=EventsService._to_naive_datetime(event.start_date),
-            end_date=EventsService._to_naive_datetime(event.end_date),
+            start_date=event.start_date,
+            end_date=event.end_date,
             short_description=event.short_description,
             description=event.description,
             pay_data=event.pay_data,
@@ -118,9 +106,8 @@ class EventsService:
             status=status,
         )
 
-        
         session.add(event)
-        await session.flush()
+        await session.commit()
         await session.refresh(event)
 
         result = await session.execute(
@@ -151,13 +138,13 @@ class EventsService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Event is full"
             )
-        
+
         if event.status == EventStatus.CANCELLED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Event is cancelled"
             )
-        
+
         if event.status == EventStatus.COMPLETED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -217,10 +204,10 @@ class EventsService:
 
     @staticmethod
     async def update_event(session: AsyncSession, event: Event, event_request: EventUpdateRequest) -> Event:
-        
+
         event.name = event_request.name if event_request.name else event.name
-        event.start_date = EventsService._to_naive_datetime(event_request.start_date) if event_request.start_date else event.start_date
-        event.end_date = EventsService._to_naive_datetime(event_request.end_date) if event_request.end_date else event.end_date
+        event.start_date = event_request.start_date if event_request.start_date else event.start_date
+        event.end_date = event_request.end_date if event_request.end_date else event.end_date
         event.short_description = event_request.short_description if event_request.short_description else event.short_description
         event.description = event_request.description if event_request.description else event.description
         event.pay_data = event_request.pay_data if event_request.pay_data else event.pay_data
@@ -285,7 +272,7 @@ class EventsService:
     @staticmethod
     async def unlike_event(session: AsyncSession, event_id: int, user: User):
         event = await EventsService.get_event_by_id(session, event_id)
-       
+
         user_ids = [like.id for like in event.likes]
         if user.id not in user_ids:
             raise HTTPException(
@@ -295,7 +282,7 @@ class EventsService:
         event.likes.remove(user)
         await session.commit()
         return event
-    
+
     @staticmethod
     async def get_liked_events(session: AsyncSession, user: User) -> List[Event]:
         result = await session.execute(

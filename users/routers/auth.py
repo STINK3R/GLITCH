@@ -5,6 +5,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 
 from main.db.db import SessionDependency
 from main.schemas.responses import MessageResponse
+from notifications.services.email import EmailService
 from users.enums.user import UserStatus
 from users.schemas.requests import (
     AuthRequest,
@@ -16,7 +17,6 @@ from users.schemas.requests import (
 )
 from users.schemas.responses import TokenResponse, UserResponse
 from users.services.auth import AuthService
-from notifications.services.email import EmailService
 from users.services.users import UsersService
 
 router = APIRouter()

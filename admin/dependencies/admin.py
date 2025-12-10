@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, status
+
 from users.dependencies.users import user_dependency
-from users.models.user import User
 from users.enums.user import UserRole
+from users.models.user import User
 
 
 async def admin_dependency(user: User = Depends(user_dependency)):
