@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-
+from asyncio import create_task
 from fastapi import APIRouter, Depends, status
 
 from events.enums.events import EventCity, EventStatus, EventType
@@ -10,7 +10,9 @@ from main.db.db import SessionDependency
 from users.dependencies.users import user_dependency
 from users.enums.user import UserRole
 from users.models.user import User
-
+from users.services.users import UsersService
+from notifications.services.email import EmailService
+from main.config.settings import settings
 router = APIRouter()
 
 
@@ -75,6 +77,24 @@ async def join_event_request(
 
     event_obj = await EventsService.join_event(session, event_id, user=user)
     event_response = EventResponse.model_validate(event_obj)
+
+    event_date = event_obj.start_date.strftime("%d.%m.%Y") if event_obj.start_date else ""
+    event_time = event_obj.start_date.strftime("%H:%M") if event_obj.start_date else ""
+    event_location = event_obj.location if event_obj.location else ""
+    
+    admin_emails = await UsersService.get_admin_emails(session)
+    for email in admin_emails:
+        create_task(EmailService.send_event_member_confirmed_email(
+            email=email,
+            event_name=event_obj.name,
+            event_date=event_date,
+            event_time=event_time,
+            event_location=event_location,
+            member_name=user.name,
+            new_members_count=len(event_obj.members),
+            event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
+        ))
+
     return event_response.model_copy(update={'is_user_in_event': True})
 
 
@@ -87,4 +107,21 @@ async def leave_event_request(
 
     event_obj = await EventsService.leave_event(session, event_id, user=user)
     event_response = EventResponse.model_validate(event_obj)
+    
+    event_date = event_obj.start_date.strftime("%d.%m.%Y") if event_obj.start_date else ""
+    event_time = event_obj.start_date.strftime("%H:%M") if event_obj.start_date else ""
+    event_location = event_obj.location if event_obj.location else ""
+    
+    admin_emails = await UsersService.get_admin_emails(session)
+    for email in admin_emails:
+        create_task(EmailService.send_event_member_cancelled_email(
+            email=email,
+            event_name=event_obj.name,
+            event_date=event_date,
+            event_time=event_time,
+            event_location=event_location,
+            member_name=user.name,
+            new_members_count=len(event_obj.members),
+            event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
+        ))
     return event_response.model_copy(update={'is_user_in_event': False})

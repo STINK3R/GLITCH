@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изменения в событии | Слёт</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap');
+        body { margin: 0; padding: 0; min-width: 100%; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background-color: #f4f4f4; }
+        a { color: #EE2C34; text-decoration: none; }
+        img { height: auto; display: block; max-width: 100%; border: 0; }
+        
+        .wrapper { width: 100%; table-layout: fixed; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        .webkit { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .outer { margin: 0 auto; width: 100%; max-width: 600px; }
+        .inner { padding: 40px 30px; }
+        
+        .logo-container { text-align: center; padding: 30px 0 20px 0; background-color: #ffffff; border-bottom: 1px solid #eeeeee; }
+        .update-badge { background-color: #e3f2fd; color: #1565c0; font-size: 14px; font-weight: bold; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 20px; }
+        .event-box { background-color: #f9f9f9; border-left: 4px solid #EE2C34; border-radius: 4px; padding: 20px; margin: 20px 0; }
+        .event-title { font-size: 18px; font-weight: bold; color: #333333; margin: 0 0 15px 0; }
+        .change-item { background-color: #fff8e1; border-radius: 4px; padding: 12px 15px; margin: 10px 0; }
+        .change-label { font-size: 12px; color: #f57c00; font-weight: bold; text-transform: uppercase; margin: 0 0 5px 0; }
+        .change-old { font-size: 14px; color: #999999; text-decoration: line-through; margin: 0; }
+        .change-new { font-size: 15px; color: #333333; font-weight: bold; margin: 5px 0 0 0; }
+        .button-container { text-align: center; margin: 30px 0; }
+        .button { background-color: #EE2C34; color: #ffffff !important; padding: 14px 30px; border-radius: 4px; font-weight: bold; display: inline-block; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(238, 44, 52, 0.2); }
+        .footer { text-align: center; font-size: 12px; color: #999999; padding: 20px; background-color: #f4f4f4; }
+        
+        @media screen and (max-width: 600px) {
+            .inner { padding: 20px; }
+            .button { display: block; width: 100%; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body>
+    <center class="wrapper">
+        <div class="webkit">
+            <table class="outer" align="center" border="0" cellpadding="0" cellspacing="0">
+                <!-- Хедер -->
+                <tr>
+                    <td class="logo-container">
+                        <!-- Логотип (PNG изображение для совместимости с email-клиентами) -->
+                        <img src="https://i.ibb.co/PshBP5DM/image.png" alt="Слёт" width="200" style="display: block; margin: 0 auto; width: 200px; height: auto;">
+                    </td>
+                </tr>
+                
+                <!-- Основной блок -->
+                <tr>
+                    <td class="inner">
+                        <h2 style="margin: 0 0 20px 0; color: #333333; text-align: center;">Изменения в событии</h2>
+                        <p style="margin: 0 0 15px 0;">Здравствуйте!</p>
+                        <p style="margin: 0 0 15px 0;">Организатор внёс изменения в событие, на которое вы записаны. Пожалуйста, ознакомьтесь с обновлённой информацией.</p>
+                        
+                        <!-- Информация о событии -->
+                        <div class="event-box">
+                            <p class="event-title">${event_name}</p>
+                            
+                            ${change_items_html}
+                            
+                        </div>
+                        
+                        <div class="button-container">
+                            <a href="${event_url}" class="button">Посмотреть событие</a>
+                        </div>
+                        
+                        <p style="margin: 20px 0 0 0; font-size: 13px; color: #999999; text-align: center;">Если новые условия вам не подходят, вы можете отменить участие в приложении.</p>
+                    </td>
+                </tr>
+                
+                <!-- Футер -->
+                <tr>
+                    <td class="footer">
+                        <p style="margin: 0;">© 2025 Слёт. Все права защищены.</p>
+                        <p style="margin: 5px 0 0 0;">Вы получили это письмо как участник события в приложении «Слёт».</p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </center>
+</body>
+</html>

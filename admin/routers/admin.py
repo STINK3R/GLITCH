@@ -1,8 +1,10 @@
 from typing import List, Optional
 from datetime import datetime
+import json
 from fastapi import APIRouter, Body, File, status, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.datastructures import UploadFile
+from asyncio import create_task
 from pydantic import ValidationError
 
 from main.db.db import SessionDependency
@@ -16,6 +18,8 @@ from admin.dependencies.admin import admin_dependency
 from users.services.users import UsersService
 from admin.schemas.responses import UserAdminResponse
 from admin.schemas.requests import UserUpdateRequest
+from notifications.services.email import EmailService
+from main.config.settings import settings
 
 router = APIRouter()
 
@@ -32,6 +36,7 @@ async def create_event_request(
     max_members: Optional[int] = Body(None),
     type: EventType = Body(...),
     city: EventCity = Body(...),
+    invited_users: Optional[str] = Body(None),
     # admin: User = Depends(admin_dependency),
     photo: UploadFile = File(...)
 ) -> EventResponse:
@@ -52,8 +57,43 @@ async def create_event_request(
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
+    # Parse invited_users from JSON string
+    invited_users_list: Optional[List[int]] = None
+    if invited_users:
+        try:
+            invited_users_list = json.loads(invited_users)
+            if not isinstance(invited_users_list, list):
+                raise ValueError("invited_users must be a JSON array")
+            invited_users_list = [int(uid) for uid in invited_users_list]
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid invited_users format: {str(e)}. Expected JSON array, e.g. [1, 2, 3]"
+            )
+
     image_path = await ImagesService.save_image(photo)
     event_obj = await EventsService.create_event(session, event, image_path)
+
+    if invited_users_list:
+        for user_id in invited_users_list:
+            try:
+                user = await UsersService.get_user_by_id(session, user_id)
+            except HTTPException:
+                continue
+            if user:
+                formatted_event_date = event.start_date.strftime("%d.%m.%Y")
+                formatted_event_time = event.start_date.strftime("%H:%M")
+                create_task(EmailService.send_event_created_email(
+                    email=user.email,
+                    event_name=event.name,
+                    event_date=formatted_event_date,
+                    event_time=formatted_event_time,
+                    event_location=event.location if event.location else "Не указано",
+                    max_participants=event.max_members if event.max_members else "Не указано",
+                    event_description=event.description if event.description else "Не указано",
+                    event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
+                ))
+
     event_response = EventResponse.model_validate(event_obj)
     return event_response.model_copy(update={'is_user_in_event': False})
 
@@ -72,11 +112,12 @@ async def update_event_request(
     max_members: Optional[int] = Body(None),
     city: EventCity = Body(None),
     photo: UploadFile = File(None),
+    status: EventStatus = Body(None),
     # admin: User = Depends(admin_dependency),
 ) -> EventResponse:
 
     try:
-        event = EventUpdateRequest(
+        new_event = EventUpdateRequest(
             name=name,
             start_date=start_date,
             end_date=end_date,
@@ -86,28 +127,49 @@ async def update_event_request(
             pay_data=pay_data,
             max_members=max_members,
             city=city,
-            status=EventStatus.ACTIVE
+            status=status
         )
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    
+    event = await EventsService.get_event_by_id(session, event_id)
+
+    if status == EventStatus.CANCELLED and event.status != EventStatus.CANCELLED:
+        members = await EventsService.get_event_members(session, event_id)
+        for member in members:
+            formatted_event_date = event.start_date.strftime("%d.%m.%Y")
+            formatted_event_time = event.start_date.strftime("%H:%M")
+            create_task(EmailService.send_event_cancelled_email(
+                email=member.email,
+                event_name=new_event.name,
+                event_date=formatted_event_date,
+                event_location=new_event.location if new_event.location else "Не указано",  
+                event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_id)}"
+            ))
+    else:
+        members = await EventsService.get_event_members(session, event_id)
+        for member in members:
+            formatted_event_date = event.start_date.strftime("%d.%m.%Y")
+            formatted_event_time = event.start_date.strftime("%H:%M")
+            create_task(EmailService.send_event_updated_email(
+                email=member.email,
+                event_name=event.name,
+                old_date=formatted_event_date,
+                new_date=formatted_event_date,
+                old_location=event.location if event.location else "Не указано",
+                new_location=new_event.location if new_event.location else "Не указано",
+                new_description=new_event.description if new_event.description else "Не указано",
+                event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_id)}"
+            ))
 
     if photo:
         # TODO: Delete old image
         image_path = await ImagesService.save_image(photo)
         event.image_url = image_path
 
-    event_obj = await EventsService.update_event(session, event_id, event)
+    event_obj = await EventsService.update_event(session, event=event, event_request=new_event)
     event_response = EventResponse.model_validate(event_obj)
     return event_response.model_copy(update={'is_user_in_event': False})
-
-@router.delete('/events/{event_id}', response_model=MessageResponse, status_code=status.HTTP_200_OK)
-async def delete_event_request(
-    session: SessionDependency,
-    event_id: int,
-    # admin: User = Depends(admin_dependency),
-) -> MessageResponse:
-    await EventsService.delete_event(session, event_id)
-    return MessageResponse(message="Event deleted successfully")
 
 @router.get('/events/{event_id}/members-csv', status_code=status.HTTP_200_OK)
 async def get_event_members_csv_request(

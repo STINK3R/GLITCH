@@ -8,6 +8,7 @@ from admin.schemas.requests import UserUpdateRequest
 from users.models.user import User
 from users.schemas.requests import RegisterRequest
 from users.services.auth import AuthService
+from users.enums.user import UserRole
 
 
 class UsersService:
@@ -24,14 +25,26 @@ class UsersService:
         result = await session.execute(
             select(User).where(User.email == email)
         )
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return user
 
     @staticmethod
     async def get_user_by_id(session: AsyncSession, user_id: int) -> Optional[User]:
         result = await session.execute(
             select(User).where(User.id == user_id)
         )
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return user
 
     @staticmethod
     async def create_user(session: AsyncSession, new_user: RegisterRequest) -> User:
@@ -52,11 +65,7 @@ class UsersService:
     @staticmethod
     async def update_user(session: AsyncSession, user_id: int, new_data: UserUpdateRequest) -> User:
         user = await UsersService.get_user_by_id(session, user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not found"
-            )
+        
         user.name = new_data.name.capitalize() if new_data.name else user.name
         user.surname = new_data.surname.capitalize() if new_data.surname else user.surname
         user.father_name = new_data.father_name.capitalize() if new_data.father_name else user.father_name
@@ -69,27 +78,22 @@ class UsersService:
 
     @staticmethod
     async def user_exists(session: AsyncSession, email: str) -> bool:
-        user = await UsersService.get_user_by_email(session, email)
-        return user is not None
+        try:
+            await UsersService.get_user_by_email(session, email)
+        except HTTPException:
+            return False
+        return True
 
     @staticmethod
     async def verify_user_password(session: AsyncSession, email: str, password: str) -> tuple[bool, User]:
         user = await UsersService.get_user_by_email(session, email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not found"
-            )
+        
         return AuthService.verify_hash(password, user.hashed_password), user
 
     @staticmethod
     async def reset_password(session: AsyncSession, email: str, new_password: str):
         user = await UsersService.get_user_by_email(session, email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not found"
-            )
+
         if AuthService.verify_hash(new_password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -99,3 +103,10 @@ class UsersService:
         session.add(user)
         await session.commit()
         return True
+
+    @staticmethod
+    async def get_admin_emails(session: AsyncSession) -> List[str]:
+        result = await session.execute(
+            select(User.email).where(User.role == UserRole.ADMIN)
+        )
+        return result.scalars().all()
