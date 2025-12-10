@@ -1,0 +1,71 @@
+import { Route, Routes, Navigate } from "react-router-dom";
+import { Login } from "./features/auth/Login/Login.jsx";
+import { Register } from "./features/auth/Registration/Registration.jsx";
+import { PasswordRecovery } from "./features/auth/Recovery/PasswordRecovery.jsx";
+import { ResetPasswordPage } from "./features/auth/Recovery/ResetPasswordPage.jsx";
+import { VerifyEmail } from "./features/auth/Verification/VerifyEmail.jsx";
+import { EventsPage } from "./pages/Events/EventsPage.jsx";
+import { EventDetailPage } from "./pages/Events/EventDetailPage.jsx";
+import { TermsPage } from "./pages/Legal/TermsPage.jsx";
+import { PrivacyPage } from "./pages/Legal/PrivacyPage.jsx";
+import { ProtectedRoute } from "./components/layouts/ProtectedRoutes.jsx";
+import { AdminRoute } from "./components/layouts/AdminRoute.jsx";
+import { AdminLayout, EventsManagement, UsersManagement } from "./features/admin";
+
+export default function AppRoutes() {
+  return (
+    <Routes>
+      {/* Главная страница - редирект на события */}
+      <Route path="/" element={<Navigate to="/events" replace />} />
+
+      {/* Авторизация */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/recovery" element={<PasswordRecovery />} />
+      
+      {/* Ссылки из писем */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+
+      {/* Правовые документы */}
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+
+      {/* Защищённые маршруты - события */}
+      <Route
+        path="/events"
+        element={
+          <ProtectedRoute>
+            <EventsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/events/:id"
+        element={
+          <ProtectedRoute>
+            <EventDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Админ-панель (только для администраторов) */}
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/events" replace />} />
+        <Route path="users" element={<UsersManagement />} />
+        <Route path="events" element={<EventsManagement />} />
+      </Route>
+
+      {/* 404 - редирект на главную */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
