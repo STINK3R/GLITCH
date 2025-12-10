@@ -17,7 +17,7 @@ from events.services.images import ImagesService
 from admin.dependencies.admin import admin_dependency
 from users.services.users import UsersService
 from admin.schemas.responses import UserAdminResponse
-from admin.schemas.requests import UserUpdateRequest
+from admin.schemas.requests import UserUpdateRequest, ResetUserPasswordRequest
 from notifications.services.email import EmailService
 from main.config.settings import settings
 
@@ -208,4 +208,17 @@ async def update_user_request(
     user = await UsersService.update_user(session, user_id=new_data.id, new_data=new_data)
     return UserAdminResponse.model_validate(user)
 
-# TODO: reset user password (admin print new password -> new password will be sent to user email)
+@router.post('/users/{user_id}/reset-password', response_model=MessageResponse, status_code=status.HTTP_200_OK)
+async def reset_user_password_request(
+    session: SessionDependency,
+    user_id: int,
+    request: ResetUserPasswordRequest,
+    # admin: User = Depends(admin_dependency),
+) -> MessageResponse:
+    user = await UsersService.get_user_by_id(session, user_id)
+    await UsersService.reset_password(session, email=user.email, new_password=request.new_password)
+    create_task(EmailService.send_admin_reset_password_email(
+        email=user.email,
+        new_password=request.new_password
+    ))
+    return MessageResponse(message="Password reset successfully")
