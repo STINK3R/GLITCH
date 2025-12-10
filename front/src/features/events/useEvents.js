@@ -17,6 +17,7 @@ export const EVENTS_QUERY_KEYS = {
   detail: (id) => ["events", "detail", id],
   similar: (type, excludeId) => ["events", "similar", type, excludeId],
   participants: (id) => ["events", "participants", id],
+  comments: (id) => ["events", "comments", id],
 };
 
 /**
@@ -248,5 +249,37 @@ export function useFavoriteEvents() {
     queryFn: () => safeFetch(() => eventsApi.getFavorites()),
     staleTime: 1000 * 60 * 5,
     retry: false,
+  });
+}
+
+/**
+ * Хук для получения отзывов/комментариев события
+ * @param {number|string} eventId - ID события
+ */
+export function useEventComments(eventId) {
+  return useQuery({
+    queryKey: EVENTS_QUERY_KEYS.comments(eventId),
+    queryFn: () => safeFetch(() => eventsApi.getComments(eventId)),
+    enabled: !!eventId,
+    staleTime: 1000 * 60 * 2,
+    retry: false,
+  });
+}
+
+/**
+ * Хук для добавления отзыва/комментария к событию
+ */
+export function useAddComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, comment, rating }) =>
+      eventsApi.addComment(eventId, { comment, rating }),
+    onSuccess: (_, variables) => {
+      // Инвалидируем кэш комментариев
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.comments(variables.eventId) });
+      // Инвалидируем детали события (там может быть средний рейтинг)
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.detail(variables.eventId) });
+    },
   });
 }

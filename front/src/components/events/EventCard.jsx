@@ -94,7 +94,16 @@ export function EventCard({ event }) {
   const toggleFavoriteMutation = useToggleFavorite();
   
   // Получаем статус с поддержкой разных форматов
-  const status = getField(event, "status", "state") || EVENT_STATUS.ACTIVE;
+  const rawStatus = getField(event, "status", "state") || EVENT_STATUS.ACTIVE;
+  
+  // Проверяем дату окончания для точного определения статуса
+  const endDate = getField(event, "end_date", "endDate", "date_end", "end_at", "date_to", "finish_date");
+  const isEventEnded = endDate && new Date(endDate) < new Date();
+  
+  // Определяем финальный статус: если дата прошла - событие завершено
+  const status = (rawStatus === EVENT_STATUS.COMPLETED || isEventEnded) 
+    ? EVENT_STATUS.COMPLETED 
+    : rawStatus;
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG[EVENT_STATUS.ACTIVE];
   
   // Обработчик клика по избранному (оптимистичное обновление)
@@ -126,7 +135,7 @@ export function EventCard({ event }) {
 
   // Получаем даты
   const startDate = getField(event, "start_date", "startDate", "date_start", "start_at", "date_from", "begin_date");
-  const endDate = getField(event, "end_date", "endDate", "date_end", "end_at", "date_to", "finish_date");
+  // endDate уже объявлен выше для проверки статуса
 
   // Получаем количество участников (из массива members или поля)
   const members = getField(event, "members") || [];
@@ -139,6 +148,10 @@ export function EventCard({ event }) {
   
   // Определяем, показывать ли блюр и тултип (только если есть краткое описание)
   const hasShortDescription = Boolean(shortDescription);
+
+  // Получаем средний рейтинг
+  const averageRating = getField(event, "average_rating", "averageRating", "rating", "avg_rating");
+  const hasRating = averageRating !== null && averageRating !== undefined && averageRating > 0;
 
   return (
     <Link
@@ -226,10 +239,22 @@ export function EventCard({ event }) {
 
       {/* Контент */}
       <div className="flex flex-col pt-2 pb-2 md:pb-4">
-        {/* Название */}
-        <h3 className="text-sm md:text-[20px] leading-tight md:leading-6 font-medium text-neutral-900 line-clamp-2">
-          {title}
-        </h3>
+        {/* Название и рейтинг */}
+        <div className="flex items-start gap-2">
+          <h3 className="flex-1 text-sm md:text-[20px] leading-tight md:leading-6 font-medium text-neutral-900 line-clamp-2">
+            {title}
+          </h3>
+          {hasRating && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#EE2C34" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+              </svg>
+              <span className="text-sm md:text-base font-medium text-neutral-900">
+                {typeof averageRating === 'number' ? averageRating.toFixed(1) : averageRating}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Даты */}
         <p className="mt-1 md:mt-2 text-xs md:text-[15px] leading-4 md:leading-5 text-[#2A2A2A]">

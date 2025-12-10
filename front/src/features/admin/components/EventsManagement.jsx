@@ -773,7 +773,19 @@ function EventPreviewModal({ event, onClose, formatDate }) {
 
             {/* О событии */}
             <div className="mb-6">
-              <h4 className="text-base font-semibold text-neutral-900 mb-2">О событии</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <h4 className="text-base font-semibold text-neutral-900">О событии</h4>
+                {event.average_rating > 0 && (
+                  <div className="flex items-center gap-1">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#EE2C34" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                    </svg>
+                    <span className="text-sm font-medium text-neutral-900">
+                      {event.average_rating.toFixed(1)}
+                    </span>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap">
                 {event.description || event.short_description || "Описание отсутствует"}
               </p>

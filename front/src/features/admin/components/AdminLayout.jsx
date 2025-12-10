@@ -220,7 +220,7 @@ export function AdminLayout() {
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
       {/* Хедер */}
-      <header className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40">
+      <header className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50">
         <div className="flex items-center justify-between">
           {/* Левая часть: меню + логотип */}
           <div className="flex items-center gap-3">

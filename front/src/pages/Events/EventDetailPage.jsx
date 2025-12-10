@@ -19,7 +19,9 @@ import {
 } from "../../features/events/useEvents";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { ReviewModal } from "../../components/ui/ReviewModal";
 import { EventCard } from "../../components/events/EventCard";
+import { getImageUrl } from "../../utils/imageUrl";
 
 // Иконки из public/icons
 import peopleIcon from "/icons/people.svg";
@@ -160,9 +162,15 @@ export function EventDetailPage() {
 
   // Состояния
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isParticipating, setIsParticipating] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Скролл наверх при монтировании компонента
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
 
   // Загрузка данных события
   const { data: event, isLoading, isError, refetch } = useEventDetail(id);
@@ -233,8 +241,8 @@ export function EventDetailPage() {
   };
 
   // Получаем данные события
-  const imageUrl = getField(event, "image_url", "image", "photo", "cover", "preview") 
-    || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop";
+  const rawImageUrl = getField(event, "image_url", "image", "photo", "cover", "preview");
+  const imageUrl = getImageUrl(rawImageUrl) || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop";
   const title = getField(event, "name", "title", "event_name") || "Название события";
   const description = getField(event, "description", "about", "text") || "";
   const startDate = getField(event, "start_date", "startDate", "date_start", "start_at");
@@ -414,19 +422,37 @@ export function EventDetailPage() {
             <div className="hidden lg:block w-full max-w-[480px]">
               {isEventCompleted ? (
                 /* Событие завершено */
-                <>
-                  <button
-                    disabled
-                    className="relative z-10 w-full h-[60px] px-4 text-[17px] font-medium text-white bg-[#F8ABAE] rounded-[20px] cursor-not-allowed"
-                  >
-                    Событие закончилось
-                  </button>
-                  <div className="bg-[#EFEFEF] rounded-b-[20px] px-4 pt-[42px] pb-3 -mt-[30px]">
-                    <p className="text-center text-[13px] text-[#828282]">
-                      Это событие уже прошло
-                    </p>
-                  </div>
-                </>
+                isParticipating ? (
+                  /* Участник может оставить отзыв */
+                  <>
+                    <button
+                      onClick={() => setShowReviewModal(true)}
+                      className="relative z-10 w-full h-[60px] px-4 text-[17px] font-medium text-white bg-[#EE2C34] rounded-[20px] hover:bg-[#D42930] transition-colors"
+                    >
+                      Оценить
+                    </button>
+                    <div className="bg-[#EFEFEF] rounded-b-[20px] px-4 pt-[42px] pb-3 -mt-[30px]">
+                      <p className="text-center text-[13px] text-[#828282]">
+                        Это событие уже прошло
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  /* Не участник - не может оставить отзыв */
+                  <>
+                    <button
+                      disabled
+                      className="relative z-10 w-full h-[60px] px-4 text-[17px] font-medium text-white bg-[#F8ABAE] rounded-[20px] cursor-not-allowed"
+                    >
+                      Событие закончилось
+                    </button>
+                    <div className="bg-[#EFEFEF] rounded-b-[20px] px-4 pt-[42px] pb-3 -mt-[30px]">
+                      <p className="text-center text-[13px] text-[#828282]">
+                        Это событие уже прошло
+                      </p>
+                    </div>
+                  </>
+                )
               ) : isParticipating ? (
                 <>
                   <button
@@ -519,36 +545,43 @@ export function EventDetailPage() {
         <div className="lg:hidden h-[120px]" />
       </div>
 
-        {/* Модальное окно подтверждения отмены */}
-        <ConfirmModal
-          isOpen={showCancelModal}
-          onClose={() => setShowCancelModal(false)}
-          onConfirm={handleCancelParticipation}
-        title="Вы точно хотите отменить участие?"
-        confirmText="Отменить участие"
-        cancelText="Назад"
-          isLoading={cancelMutation.isPending}
-        />
-        
-      {/* Мобильная фиксированная кнопка участия - прозрачный фон */}
-      <div className="lg:hidden fixed bottom-[56px] left-0 right-0 z-[35] px-4 pt-3 pb-4">
-        {/* Статус участия */}
-        <p className="text-center text-[13px] text-[#828282] mb-2">
-          {isEventCompleted 
-            ? "Это событие уже прошло" 
-            : isParticipating 
-              ? "Вы участвуете!" 
-              : "Вы не участвуете"}
-        </p>
-        
-        {/* Кнопка */}
+      {/* Модальное окно подтверждения отмены */}
+      <ConfirmModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancelParticipation}
+        isLoading={cancelMutation.isPending}
+      />
+
+      {/* Модальное окно отзыва */}
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        eventId={id}
+        eventName={title}
+      />
+
+      {/* Тост уведомление */}
+      {showToast && <ParticipationToast />}
+
+      {/* Мобильная кнопка участия */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 p-4 z-40">
         {isEventCompleted ? (
-          <button
-            disabled
-            className="w-full h-[56px] px-4 text-[17px] font-medium text-white bg-[#F8ABAE] rounded-[28px] cursor-not-allowed"
-          >
-            Событие закончилось
-          </button>
+          isParticipating ? (
+            <button
+              onClick={() => setShowReviewModal(true)}
+              className="w-full h-[56px] px-4 text-[17px] font-medium text-white bg-[#EE2C34] rounded-[28px] hover:bg-[#D42930] transition-colors"
+            >
+              Оценить
+            </button>
+          ) : (
+            <button
+              disabled
+              className="w-full h-[56px] px-4 text-[17px] font-medium text-white bg-[#F8ABAE] rounded-[28px] cursor-not-allowed"
+            >
+              Событие закончилось
+            </button>
+          )
         ) : isParticipating ? (
           <button
             onClick={() => setShowCancelModal(true)}

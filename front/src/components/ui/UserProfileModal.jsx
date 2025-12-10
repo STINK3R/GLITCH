@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../features/auth/AuthStore";
 import { authApi } from "../../features/auth/api";
 import { http } from "../../services/http";
+import { useTheme } from "../../contexts/ThemeContext";
 
 // Иконки для пунктов меню (inline SVG)
 const PersonIcon = () => (
@@ -77,10 +78,12 @@ const SCREENS = {
   MAIN: "main",
   PERSONAL_DATA: "personal_data",
   SECURITY: "security",
+  PASSWORD_RESET_CONFIRM: "password_reset_confirm",
   EMAIL_INSTRUCTION: "email_instruction",
   NOTIFICATIONS: "notifications",
   THEME: "theme",
   HELP: "help",
+  LOGOUT_CONFIRM: "logout_confirm",
 };
 
 // Опции темы
@@ -345,6 +348,47 @@ function EmailInstructionScreen({ email, onBack, onResend, onClose }) {
 }
 
 /**
+ * Экран подтверждения сброса пароля
+ */
+function PasswordResetConfirmScreen({ onConfirm, onCancel }) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 12C14 14.2091 12.2091 16 10 16C7.79086 16 6 14.2091 6 12C6 9.79086 7.79086 8 10 8C12.2091 8 14 9.79086 14 12Z" stroke="#EE2C34" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M14 12L20 6" stroke="#EE2C34" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M20 6L22 8" stroke="#EE2C34" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        
+        <h2 className="text-xl font-semibold text-neutral-900 mb-2">
+          Сбросить пароль?
+        </h2>
+        <p className="text-sm text-neutral-500 mb-8">
+          Мы отправим вам письмо с инструкцией по восстановлению пароля
+        </p>
+
+        <div className="w-full space-y-3">
+          <button
+            onClick={onConfirm}
+            className="w-full h-[52px] bg-[#EE2C34] text-white font-medium rounded-2xl hover:bg-[#D42930] transition-colors"
+          >
+            Отправить письмо
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full h-[52px] bg-[#F5F5F5] text-neutral-900 font-medium rounded-2xl hover:bg-neutral-200 transition-colors"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Экран "Выбор темы"
  */
 function ThemeScreen({ currentTheme, onBack, onSelectTheme }) {
@@ -459,10 +503,9 @@ export function UserProfileModal({ isOpen, onClose }) {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
+  const { theme, setTheme } = useTheme();
   
   const [currentScreen, setCurrentScreen] = useState(SCREENS.MAIN);
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
-  
   const modalRef = useRef(null);
 
   // Закрытие по Escape
@@ -477,28 +520,29 @@ export function UserProfileModal({ isOpen, onClose }) {
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, currentScreen, onClose]);
-
-  // Закрытие по клику вне модалки
-  const handleBackdropClick = (e) => {
-    if (modalRef.current && !modalRef.current.contains(e.target)) {
-      onClose();
-    }
-  };
-
-  // Блокировка скролла
-  useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
+      document.addEventListener("keydown", handleEscape);
     }
     return () => {
-      document.body.style.overflow = "unset";
+      document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen]);
+  }, [isOpen, currentScreen, onClose]);
+
+  // Закрытие по клику вне дропдауна (без перекрытия всей страницы)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e) => {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   // Сброс экрана при закрытии
   useEffect(() => {
@@ -532,7 +576,6 @@ export function UserProfileModal({ isOpen, onClose }) {
 
   const handleSelectTheme = (themeId) => {
     setTheme(themeId);
-    localStorage.setItem("theme", themeId);
     setCurrentScreen(SCREENS.MAIN);
   };
 
@@ -549,7 +592,11 @@ export function UserProfileModal({ isOpen, onClose }) {
   };
 
   const handleChangePasswordClick = () => {
-    handleSendResetEmail();
+    setCurrentScreen(SCREENS.PASSWORD_RESET_CONFIRM);
+  };
+
+  const handleConfirmPasswordReset = async () => {
+    await handleSendResetEmail();
   };
 
   const handleLogoutClick = () => {
@@ -561,8 +608,6 @@ export function UserProfileModal({ isOpen, onClose }) {
     onClose();
     window.location.href = "/login";
   };
-
-  if (!isOpen) return null;
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -580,6 +625,13 @@ export function UserProfileModal({ isOpen, onClose }) {
             onBack={handleBack}
             onChangePassword={handleChangePasswordClick}
             onLogout={handleLogoutClick}
+          />
+        );
+      case SCREENS.PASSWORD_RESET_CONFIRM:
+        return (
+          <PasswordResetConfirmScreen
+            onConfirm={handleConfirmPasswordReset}
+            onCancel={handleBack}
           />
         );
       case SCREENS.EMAIL_INSTRUCTION:
@@ -638,14 +690,13 @@ export function UserProfileModal({ isOpen, onClose }) {
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div
-      className="fixed inset-0 z-50"
-      onClick={handleBackdropClick}
-    >
+    <div className="fixed inset-0 z-40 pointer-events-none">
       <div
         ref={modalRef}
-        className="absolute right-4 top-20 w-full max-w-[400px] bg-white rounded-[20px] shadow-2xl transform animate-slide-in-right"
+        className="absolute top-20 right-4 w-full max-w-[400px] bg-white rounded-[20px] shadow-xl border border-neutral-100 overflow-hidden flex flex-col transition-all duration-200 ease-out origin-top-right opacity-100 scale-100 translate-y-0 animate-dropdown-panel pointer-events-auto"
         style={{ maxHeight: "calc(100vh - 120px)" }}
         role="dialog"
         aria-modal="true"

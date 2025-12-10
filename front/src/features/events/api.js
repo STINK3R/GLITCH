@@ -150,4 +150,23 @@ export const eventsApi = {
    * @returns {Promise<Array>} Список участников
    */
   getParticipants: (eventId) => http(`/api/events/${eventId}/participants`),
+
+  /**
+   * Получить отзывы/комментарии события
+   * @param {number|string} eventId - ID события
+   * @returns {Promise<Array>} Список отзывов
+   */
+  getComments: (eventId) => http(`/api/events/${eventId}/comments`),
+
+  /**
+   * Добавить отзыв/комментарий к событию
+   * @param {number|string} eventId - ID события
+   * @param {Object} data - Данные отзыва { comment: string, rating: number }
+   * @returns {Promise<Object>} Созданный отзыв
+   */
+  addComment: (eventId, data) =>
+    http(`/api/events/${eventId}/comment`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };

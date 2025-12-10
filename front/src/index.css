@@ -80,15 +80,17 @@
   --color-primary-hover: #D42930;
   --color-secondary: #4f46e5;
   
-  /* Цвета текста */
+  /* Цвета текста - светлая тема */
   --color-text-primary: #171717;
   --color-text-secondary: #525252;
   --color-text-muted: #a3a3a3;
   
-  /* Фон */
+  /* Фон - светлая тема */
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #fafafa;
   --color-bg-tertiary: #f5f5f5;
+  --color-bg-gray: #EFEFEF;
+  --color-bg-light-gray: #E3E3E3;
 
   --main-color: #EE2C34;
   
@@ -100,6 +102,37 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Темная тема */
+.dark {
+  /* Цвета текста - темная тема */
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #D4D4D4;
+  --color-text-muted: #A3A3A3;
+  
+  /* Фон - темная тема */
+  --color-bg-primary: #222222;
+  --color-bg-secondary: #2A2A2A;
+  --color-bg-tertiary: #333333;
+  --color-bg-gray: #3A3A3A;
+  --color-bg-light-gray: #444444;
+}
+
+/* Анимация выпадающих панелей (аккаунт, избранное, уведомления) */
+@keyframes dropdown-panel-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-dropdown-panel {
+  animation: dropdown-panel-fade 0.18s ease-out;
 }
 
 /* ===========================================

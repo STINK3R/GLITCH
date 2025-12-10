@@ -220,34 +220,26 @@ export function FavoritesModal({ isOpen, onClose }) {
   }, [isOpen, onClose]);
 
   // Закрытие по клику вне модалки
-  const handleBackdropClick = (e) => {
-    if (modalRef.current && !modalRef.current.contains(e.target)) {
-      onClose();
-    }
-  };
-
-  // Блокировка скролла
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
+    if (!isOpen) return;
+
+    const handleClickOutside = (e) => {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        onClose();
+      }
     };
-  }, [isOpen]);
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50"
-      onClick={handleBackdropClick}
-    >
+    <div className="fixed inset-0 z-40 pointer-events-none">
       <div
         ref={modalRef}
-        className="absolute right-4 top-20 w-full max-w-[460px] bg-white rounded-[20px] shadow-2xl transform animate-slide-in-right"
+        className="absolute top-20 right-4 w-full max-w-[460px] bg-white rounded-[20px] shadow-xl border border-neutral-100 overflow-hidden flex flex-col transition-all duration-200 ease-out origin-top-right opacity-100 scale-100 translate-y-0 animate-dropdown-panel pointer-events-auto"
         style={{ maxHeight: "calc(100vh - 120px)" }}
         role="dialog"
         aria-modal="true"
