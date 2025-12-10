@@ -1,8 +1,8 @@
-from pydantic import BaseModel, ConfigDict
-from datetime import datetime
-from users.enums.user import UserRole, UserStatus
+from datetime import date
 
-from events.schemas.responses import EventResponse
+from pydantic import BaseModel, ConfigDict
+
+from users.enums.user import UserRole, UserStatus
 
 
 class UserAdminResponse(BaseModel):
@@ -15,5 +15,5 @@ class UserAdminResponse(BaseModel):
     email: str
     role: UserRole
     status: UserStatus
-    created_at: datetime
-    updated_at: datetime
+    created_at: date
+    updated_at: date

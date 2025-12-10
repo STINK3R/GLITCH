@@ -1,10 +1,13 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+
 from fastapi import HTTPException, status
-from notifications.models.notifications import Notification
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
 from notifications.enums.notifications import NotificationType
+from notifications.models.notifications import Notification
+
 
 class NotificationsService:
     @staticmethod
@@ -21,13 +24,13 @@ class NotificationsService:
     @staticmethod
     async def get_notifications(session: AsyncSession, user_id: int, is_read: bool = False) -> List[Notification]:
         result = await session.execute(
-            select(Notification).where(Notification.user_id == user_id, 
-                                       Notification.is_read == is_read)
-                                       .order_by(Notification.created_at.desc())
-                                       .options(joinedload(Notification.event))
-                                       )
+            select(Notification)
+            .where(Notification.user_id == user_id, Notification.is_read == is_read)
+            .order_by(Notification.created_at.desc())
+            .options(joinedload(Notification.event))
+        )
         return result.scalars().all()
-    
+
     @staticmethod
     async def get_notification_by_id(session: AsyncSession, notification_id: int) -> Notification:
         result = await session.execute(
@@ -42,7 +45,7 @@ class NotificationsService:
                 detail="Notification not found"
             )
         return notification
-    
+
     @staticmethod
     async def read_notification(session: AsyncSession, notification_id: int) -> Notification:
         notification = await NotificationsService.get_notification_by_id(session=session, notification_id=notification_id)

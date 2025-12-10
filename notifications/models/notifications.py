@@ -1,8 +1,8 @@
-from sqlalchemy import Column, ForeignKey, BigInteger, Enum, Boolean
-from notifications.enums.notifications import NotificationType
+from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 
 from main.models.base import BaseModel
+from notifications.enums.notifications import NotificationType
 
 
 class Notification(BaseModel):

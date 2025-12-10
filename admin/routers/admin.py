@@ -1,35 +1,37 @@
-from typing import List, Optional
-from datetime import datetime, timezone
 import json
-from fastapi import APIRouter, Body, File, status, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.datastructures import UploadFile
 from asyncio import create_task
+from datetime import date
+from typing import List, Optional
+
+from fastapi import APIRouter, Body, File, HTTPException, status
+from fastapi.datastructures import UploadFile
+from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
-from main.db.db import SessionDependency
-from main.schemas.responses import MessageResponse
-from events.enums.events import EventCity, EventType, EventStatus
+from admin.schemas.requests import ResetUserPasswordRequest, UserUpdateRequest
+from admin.schemas.responses import UserAdminResponse
+from events.enums.events import EventCity, EventStatus, EventType
 from events.schemas.requests import EventRequest, EventUpdateRequest
 from events.schemas.responses import EventResponse
 from events.services.events import EventsService
 from events.services.images import ImagesService
-from admin.dependencies.admin import admin_dependency
-from users.services.users import UsersService
-from admin.schemas.responses import UserAdminResponse
-from admin.schemas.requests import UserUpdateRequest, ResetUserPasswordRequest
-from notifications.services.email import EmailService
 from main.config.settings import settings
-from notifications.services.notifications import NotificationsService
+from main.db.db import SessionDependency
+from main.schemas.responses import MessageResponse
 from notifications.enums.notifications import NotificationType
+from notifications.services.email import EmailService
+from notifications.services.notifications import NotificationsService
+from users.services.users import UsersService
+
 router = APIRouter()
+
 
 @router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 async def create_event_request(
     session: SessionDependency,
     name: str = Body(...),
-    start_date: datetime = Body(...),
-    end_date: datetime = Body(...),
+    start_date: date = Body(...),
+    end_date: date = Body(...),
     description: str = Body(...),
     short_description: Optional[str] = Body(None),
     location: Optional[str] = Body(None),
@@ -83,12 +85,11 @@ async def create_event_request(
                 continue
             if user:
                 formatted_event_date = event.start_date.strftime("%d.%m.%Y")
-                formatted_event_time = event.start_date.strftime("%H:%M")
                 create_task(EmailService.send_event_created_email(
                     email=user.email,
                     event_name=event.name,
                     event_date=formatted_event_date,
-                    event_time=formatted_event_time,
+                    event_time="",
                     event_location=event.location if event.location else "Не указано",
                     max_participants=event.max_members if event.max_members else "Не указано",
                     event_description=event.description if event.description else "Не указано",
@@ -112,8 +113,8 @@ async def update_event_request(
     session: SessionDependency,
     event_id: int,
     name: str = Body(None),
-    start_date: datetime = Body(None),
-    end_date: datetime = Body(None),
+    start_date: date = Body(None),
+    end_date: date = Body(None),
     description: str = Body(None),
     short_description: Optional[str] = Body(None),
     location: Optional[str] = Body(None),
@@ -121,7 +122,7 @@ async def update_event_request(
     max_members: Optional[int] = Body(None),
     city: EventCity = Body(None),
     photo: UploadFile = File(None),
-    status: EventStatus = Body(None),
+    event_status: EventStatus = Body(None),
     # admin: User = Depends(admin_dependency),
 ) -> EventResponse:
 
@@ -136,22 +137,22 @@ async def update_event_request(
             pay_data=pay_data,
             max_members=max_members,
             city=city,
-            status=status
+            status=event_status
         )
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
-    
+
     event = await EventsService.get_event_by_id(session, event_id)
 
-    if status == EventStatus.CANCELLED and event.status != EventStatus.CANCELLED:
+    if event_status == EventStatus.CANCELLED and event.status != EventStatus.CANCELLED:
         members = await EventsService.get_event_members(session, event_id)
         for member in members:
             formatted_event_date = event.start_date.strftime("%d.%m.%Y")
             create_task(EmailService.send_event_cancelled_email(
                 email=member.email,
-                event_name=new_event.name,
+                event_name=event.name,
                 event_date=formatted_event_date,
-                event_location=new_event.location if new_event.location else "Не указано",  
+                event_location=event.location if event.location else "Не указано",
                 event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_id)}"
             ))
             await NotificationsService.create_notification(
@@ -189,6 +190,7 @@ async def update_event_request(
     event_response = EventResponse.model_validate(event_obj)
     return event_response.model_copy(update={'is_user_in_event': False})
 
+
 @router.get('/events/{event_id}/members-csv', status_code=status.HTTP_200_OK)
 async def get_event_members_csv_request(
     session: SessionDependency,
@@ -197,6 +199,7 @@ async def get_event_members_csv_request(
 ) -> FileResponse:
     csv_path = await EventsService.export_event_members_to_csv(session, event_id)
     return FileResponse(path=str(csv_path), filename=f"members_event_{event_id}.csv")
+
 
 @router.get('/events/{event_id}/members-excel', status_code=status.HTTP_200_OK)
 async def get_event_members_excel_request(
@@ -217,6 +220,7 @@ async def get_users_request(
     users_response = [UserAdminResponse.model_validate(user) for user in users]
     return users_response
 
+
 @router.put('/users/{user_id}', response_model=UserAdminResponse, status_code=status.HTTP_200_OK)
 async def update_user_request(
     session: SessionDependency,
@@ -225,6 +229,7 @@ async def update_user_request(
 ) -> UserAdminResponse:
     user = await UsersService.update_user(session, user_id=new_data.id, new_data=new_data)
     return UserAdminResponse.model_validate(user)
+
 
 @router.post('/users/{user_id}/reset-password', response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def reset_user_password_request(

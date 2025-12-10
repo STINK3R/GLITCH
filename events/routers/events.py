@@ -1,18 +1,20 @@
-from datetime import datetime
-from typing import Optional
 from asyncio import create_task
+from datetime import date
+from typing import Optional
+
 from fastapi import APIRouter, Depends, status
 
 from events.enums.events import EventCity, EventStatus, EventType
 from events.schemas.responses import EventResponse
 from events.services.events import EventsService
+from main.config.settings import settings
 from main.db.db import SessionDependency
+from notifications.services.email import EmailService
 from users.dependencies.users import user_dependency
 from users.enums.user import UserRole
 from users.models.user import User
 from users.services.users import UsersService
-from notifications.services.email import EmailService
-from main.config.settings import settings
+
 router = APIRouter()
 
 
@@ -21,8 +23,8 @@ async def get_events_request(
     session: SessionDependency,
     user: User = Depends(user_dependency),
     user_id: Optional[int] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     max_members: Optional[int] = None,
     name: Optional[str] = None,
     type: Optional[EventType] = None,
@@ -47,7 +49,7 @@ async def get_events_request(
         status=status,
         city=city,
         is_admin=user.role == UserRole.ADMIN,
-        is_my_events=is_my_events 
+        is_my_events=is_my_events
     )
 
     result = []
@@ -58,10 +60,11 @@ async def get_events_request(
         is_user_liked_event = user.id in [like.id for like in event.likes]
         event_response = EventResponse.model_validate(event)
         result.append(event_response.model_copy(update={
-            'is_user_in_event': is_user_in_event, 
+            'is_user_in_event': is_user_in_event,
             'is_user_liked_event': is_user_liked_event
-            }))
+        }))
     return result
+
 
 @router.get('/events/liked')
 async def get_likes_request(
@@ -75,10 +78,11 @@ async def get_likes_request(
         is_user_liked_event = user.id in [like.id for like in event.likes]
         event_response = EventResponse.model_validate(event)
         result.append(event_response.model_copy(update={
-            'is_user_liked_event': is_user_liked_event, 
+            'is_user_liked_event': is_user_liked_event,
             'is_user_in_event': is_user_in_event
-            }))
+        }))
     return result
+
 
 @router.get('/events/{event_id}', response_model=EventResponse, status_code=status.HTTP_200_OK)
 async def get_event_request(
@@ -93,7 +97,7 @@ async def get_event_request(
     return event_response.model_copy(update={
         'is_user_in_event': is_user_in_event,
         'is_user_liked_event': is_user_liked_event
-        })
+    })
 
 
 @router.post("/events/{event_id}/join", response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -106,16 +110,15 @@ async def join_event_request(
     event_response = EventResponse.model_validate(event_obj)
 
     event_date = event_obj.start_date.strftime("%d.%m.%Y") if event_obj.start_date else ""
-    event_time = event_obj.start_date.strftime("%H:%M") if event_obj.start_date else ""
     event_location = event_obj.location if event_obj.location else ""
-    
+
     admin_emails = await UsersService.get_admin_emails(session)
     for email in admin_emails:
         create_task(EmailService.send_event_member_confirmed_email(
             email=email,
             event_name=event_obj.name,
-            event_date=event_date.strftime("%d.%m.%Y") if event_date else "",
-            event_time=event_time.strftime("%H:%M") if event_time else "",
+            event_date=event_date if event_date else "",
+            event_time="",
             event_location=event_location if event_location else "Не указано",
             member_name=user.name,
             new_members_count=len(event_obj.members),
@@ -125,7 +128,7 @@ async def join_event_request(
     return event_response.model_copy(update={
         'is_user_in_event': True,
         'is_user_liked_event': user.id in [like.id for like in event_obj.likes]
-        })
+    })
 
 
 @router.get('/events/{event_id}/leave', response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -137,18 +140,17 @@ async def leave_event_request(
 
     event_obj = await EventsService.leave_event(session, event_id, user=user)
     event_response = EventResponse.model_validate(event_obj)
-    
+
     event_date = event_obj.start_date.strftime("%d.%m.%Y") if event_obj.start_date else ""
-    event_time = event_obj.start_date.strftime("%H:%M") if event_obj.start_date else ""
     event_location = event_obj.location if event_obj.location else ""
-    
+
     admin_emails = await UsersService.get_admin_emails(session)
     for email in admin_emails:
         create_task(EmailService.send_event_member_cancelled_email(
             email=email,
             event_name=event_obj.name,
-            event_date=event_date.strftime("%d.%m.%Y") if event_date else "",
-            event_time=event_time.strftime("%H:%M") if event_time else "",
+            event_date=event_date if event_date else "",
+            event_time="",
             event_location=event_location if event_location else "Не указано",
             member_name=user.name,
             new_members_count=len(event_obj.members),
@@ -159,7 +161,7 @@ async def leave_event_request(
     return event_response.model_copy(update={
         'is_user_in_event': False,
         'is_user_liked_event': is_user_liked_event
-        })
+    })
 
 
 @router.post("/events/{event_id}/like", response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -168,13 +170,14 @@ async def like_event_request(
     event_id: int,
     user: User = Depends(user_dependency),
 ) -> EventResponse:
-    
+
     event_obj = await EventsService.like_event(session, event_id, user=user)
     event_response = EventResponse.model_validate(event_obj)
     is_user_in_event = user.id in [member.id for member in event_obj.members]
-    return event_response.model_copy(update={'is_user_in_event': is_user_in_event,
+    return event_response.model_copy(update={
+        'is_user_in_event': is_user_in_event,
         'is_user_liked_event': True
-        })
+    })
 
 
 @router.delete("/events/{event_id}/unlike", response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -186,7 +189,7 @@ async def unlike_event_request(
     event_obj = await EventsService.unlike_event(session, event_id, user=user)
     event_response = EventResponse.model_validate(event_obj)
     is_user_in_event = user.id in [member.id for member in event_obj.members]
-    return event_response.model_copy(update={'is_user_in_event': is_user_in_event,
+    return event_response.model_copy(update={
+        'is_user_in_event': is_user_in_event,
         'is_user_liked_event': False
-        })
-
+    })

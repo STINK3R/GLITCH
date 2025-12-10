@@ -1,6 +1,9 @@
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
+
 from users.enums.user import UserRole, UserStatus
+
 
 class UserUpdateRequest(BaseModel):
     id: int
@@ -27,8 +30,9 @@ class UserUpdateRequest(BaseModel):
         example="Иванович"
     )
 
-    role: UserRole 
+    role: UserRole
     status: UserStatus
+
 
 class ResetUserPasswordRequest(BaseModel):
     new_password: str

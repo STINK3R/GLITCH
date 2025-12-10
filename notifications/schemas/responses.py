@@ -1,7 +1,10 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
 from notifications.enums.notifications import NotificationType
-from events.schemas.responses import EventResponse
+
+
 class NotificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

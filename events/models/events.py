@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, String
+from sqlalchemy import Column, Date, Enum, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from events.enums.events import EventCity, EventStatus, EventType
@@ -15,6 +15,7 @@ class EventMembers(Base):
     event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
 
+
 class EventLikes(Base):
     __tablename__ = "event_likes"
     __table_args__ = (
@@ -24,6 +25,7 @@ class EventLikes(Base):
 
     event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+
 
 class Event(BaseModel):
     __tablename__ = "events"
@@ -39,8 +41,8 @@ class Event(BaseModel):
     name = Column(String(128), nullable=False, index=True)
     image_url = Column(String(1024), nullable=False, index=True)
 
-    start_date = Column(DateTime, nullable=True, index=True)
-    end_date = Column(DateTime, nullable=False, index=True)
+    start_date = Column(Date, nullable=True, index=True)
+    end_date = Column(Date, nullable=False, index=True)
 
     short_description = Column(String(128), nullable=True, index=True)
     description = Column(String(1024), nullable=False, index=True)

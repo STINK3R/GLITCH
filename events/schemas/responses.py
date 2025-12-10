@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
@@ -12,8 +12,8 @@ class EventResponse(BaseModel):
     id: int
     name: str
     image_url: str
-    start_date: datetime | None
-    end_date: datetime
+    start_date: date | None
+    end_date: date
     short_description: str | None
     description: str
     location: str | None
