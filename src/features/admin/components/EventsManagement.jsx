@@ -7,6 +7,7 @@ import { adminApi } from "../api";
 import { EventModal } from "./EventModal";
 import { useToast } from "../../../components/ui/Toast";
 import { ConfirmModal } from "../../../components/ui/ConfirmModal";
+import { getImageUrl } from "../../../utils/imageUrl";
 
 // Иконка информации
 const InfoIcon = () => (
@@ -93,10 +94,14 @@ export function EventsManagement() {
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const data =
-        activeTab === "active"
-          ? await adminApi.getActiveEvents()
-          : await adminApi.getPastEvents();
+      let data;
+      if (activeTab === "active") {
+        data = await adminApi.getActiveEvents();
+      } else if (activeTab === "past") {
+        data = await adminApi.getPastEvents();
+      } else if (activeTab === "cancelled") {
+        data = await adminApi.getCancelledEvents();
+      }
       setEvents(data || []);
     } catch (error) {
       console.error("Ошибка загрузки событий:", error);
@@ -185,10 +190,10 @@ export function EventsManagement() {
       </div>
 
       {/* Табы */}
-      <div className="flex border-b border-neutral-200 mb-6">
+      <div className="flex flex-wrap border-b border-neutral-200 mb-6">
         <button
           onClick={() => setActiveTab("active")}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === "active"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
@@ -198,13 +203,23 @@ export function EventsManagement() {
         </button>
         <button
           onClick={() => setActiveTab("past")}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === "past"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
           Прошедшие {activeTab === "past" && events.length > 0 && events.length}
+        </button>
+        <button
+          onClick={() => setActiveTab("cancelled")}
+          className={`px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "cancelled"
+              ? "border-red-500 text-neutral-900"
+              : "border-transparent text-neutral-500 hover:text-neutral-700"
+          }`}
+        >
+          Отклонённые {activeTab === "cancelled" && events.length > 0 && events.length}
         </button>
       </div>
 
@@ -217,38 +232,45 @@ export function EventsManagement() {
         /* Пустое состояние */
         <div className="flex flex-col items-center justify-center py-20">
           <InfoIcon />
-          <h2 className="mt-4 text-xl font-semibold text-neutral-900">Пустая страница</h2>
+          <h2 className="mt-4 text-xl font-semibold text-neutral-900">
+            {activeTab === "cancelled" ? "Нет отклонённых событий" : "Пустая страница"}
+          </h2>
           <p className="mt-2 text-neutral-500 text-center">
-            Данная страница пока пустая.
-            <br />
-            Добавьте сюда событие
+            {activeTab === "cancelled" 
+              ? "Отклонённые события будут отображаться здесь"
+              : activeTab === "past"
+              ? "Прошедших событий пока нет"
+              : <>Данная страница пока пустая.<br />Добавьте сюда событие</>
+            }
           </p>
-          <button
-            onClick={handleCreate}
-            className="mt-6 px-8 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors"
-          >
-            Добавить событие
-          </button>
+          {activeTab === "active" && (
+            <button
+              onClick={handleCreate}
+              className="mt-6 px-8 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors"
+            >
+              Добавить событие
+            </button>
+          )}
         </div>
       ) : (
         /* Список событий */
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {events.map((event) => (
             <div
               key={event.id}
-              className="bg-white rounded-2xl p-4 flex items-start gap-4 shadow-sm"
+              className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start gap-3 sm:gap-4 shadow-sm"
             >
-              {/* Drag handle */}
-              <div className="pt-2 cursor-grab">
+              {/* Drag handle - скрыт на мобильных */}
+              <div className="hidden sm:block pt-2 cursor-grab">
                 <DragIcon />
               </div>
 
               {/* Изображение */}
-              <div className="w-32 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-100">
-                {event.cover_url ? (
+              <div className="w-full sm:w-32 h-40 sm:h-24 rounded-lg sm:rounded-xl overflow-hidden flex-shrink-0 bg-neutral-100">
+                {event.image_url ? (
                   <img
-                    src={event.cover_url}
-                    alt={event.title}
+                    src={getImageUrl(event.image_url)}
+                    alt={event.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -263,22 +285,57 @@ export function EventsManagement() {
               </div>
 
               {/* Информация */}
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-red-500 font-medium mb-1">
-                  {event.type_name || event.type || "Событие"}
+              <div className="flex-1 min-w-0 w-full">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-red-500 font-medium mb-1">
+                      {event.type || "Событие"}
+                    </div>
+                    <h3 className="text-sm sm:text-base font-semibold text-neutral-900 truncate">
+                      {event.name}
+                    </h3>
+                  </div>
+                  {/* Меню действий - мобильная версия */}
+                  <div className="sm:hidden relative" ref={openMenuId === event.id ? menuRef : null}>
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === event.id ? null : event.id)}
+                      className="p-1 hover:bg-neutral-100 rounded-lg transition-colors"
+                    >
+                      <DotsIcon />
+                    </button>
+                    {openMenuId === event.id && (
+                      <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-lg border border-neutral-200 py-1 z-10">
+                        <button
+                          onClick={() => handleEdit(event)}
+                          className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                        >
+                          <EditIcon />
+                          Редактировать
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteConfirm({ isOpen: true, eventId: event.id });
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <TrashIcon />
+                          Удалить
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-base font-semibold text-neutral-900 truncate">
-                    {event.title}
-                  </h3>
-                  <div className="flex items-center gap-1 text-sm text-neutral-500 flex-shrink-0">
+                
+                <div className="flex items-center gap-2 mt-1 mb-2">
+                  <div className="flex items-center gap-1 text-xs sm:text-sm text-neutral-500">
                     <UsersIcon />
                     <span>
-                      {event.participants_count || 0} / {event.max_participants || "∞"}
+                      {event.members?.length || 0} / {event.max_members || "∞"}
                     </span>
                   </div>
                 </div>
-                <p className="text-sm text-neutral-600 line-clamp-2 mb-2">
+                <p className="text-xs sm:text-sm text-neutral-600 line-clamp-2 mb-2">
                   {event.short_description || event.description}
                 </p>
                 <div className="text-xs text-neutral-400">
@@ -287,8 +344,8 @@ export function EventsManagement() {
                 </div>
               </div>
 
-              {/* Меню действий */}
-              <div className="relative" ref={openMenuId === event.id ? menuRef : null}>
+              {/* Меню действий - десктоп */}
+              <div className="hidden sm:block relative" ref={openMenuId === event.id ? menuRef : null}>
                 <button
                   onClick={() => setOpenMenuId(openMenuId === event.id ? null : event.id)}
                   className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"

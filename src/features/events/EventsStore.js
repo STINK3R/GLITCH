@@ -11,11 +11,14 @@ export const EVENT_TABS = {
   PAST: "past",
 };
 
-// Статусы событий
+// Статусы событий (соответствуют API: coming soon, active, completed, cancelled)
 export const EVENT_STATUS = {
+  COMING_SOON: "coming soon",
   ACTIVE: "active",
-  PAST: "past",
-  REJECTED: "rejected",
+  PAST: "completed",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  REJECTED: "cancelled",
 };
 
 export const useEventsStore = create((set, get) => ({
@@ -101,16 +104,13 @@ export const useEventsStore = create((set, get) => ({
    */
   updateEventParticipation: (eventId, isParticipating) => {
     set((state) => {
-      // Обновляем во всех списках
+      // Обновляем во всех списках (используем is_user_in_event из API)
       const updateList = (events) =>
         events.map((event) =>
           event.id === eventId
             ? {
                 ...event,
-                isParticipating,
-                participantsCount: isParticipating
-                  ? event.participantsCount + 1
-                  : event.participantsCount - 1,
+                is_user_in_event: isParticipating,
               }
             : event
         );
@@ -125,10 +125,7 @@ export const useEventsStore = create((set, get) => ({
           state.selectedEvent?.id === eventId
             ? {
                 ...state.selectedEvent,
-                isParticipating,
-                participantsCount: isParticipating
-                  ? state.selectedEvent.participantsCount + 1
-                  : state.selectedEvent.participantsCount - 1,
+                is_user_in_event: isParticipating,
               }
             : state.selectedEvent,
       };

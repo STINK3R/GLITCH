@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { adminApi } from "../api";
+import { getImageUrl } from "../../../utils/imageUrl";
 
 // Иконка закрытия
 const CloseIcon = () => (
@@ -46,18 +47,19 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
   const fileInputRef = useRef(null);
   const isEditing = !!event;
 
-  // Состояние формы
+  // Состояние формы (поля соответствуют API: name, type, city, pay_data, max_members, location)
   const [formData, setFormData] = useState({
-    title: "",
+    name: "",
     short_description: "",
     description: "",
-    payment_info: "",
-    type_id: "",
-    city_id: "",
-    max_participants: "",
+    pay_data: "",
+    type: "",
+    city: "",
+    location: "",
+    max_members: "",
     start_date: "",
     end_date: "",
-    participant_ids: [],
+    invited_users: [],
   });
 
   const [coverFile, setCoverFile] = useState(null);
@@ -113,31 +115,33 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
   useEffect(() => {
     if (isOpen && event) {
       setFormData({
-        title: event.title || "",
+        name: event.name || "",
         short_description: event.short_description || "",
         description: event.description || "",
-        payment_info: event.payment_info || "",
-        type_id: event.type_id || "",
-        city_id: event.city_id || "",
-        max_participants: event.max_participants || "",
+        pay_data: event.pay_data || "",
+        type: event.type || "",
+        city: event.city || "",
+        location: event.location || "",
+        max_members: event.max_members || "",
         start_date: event.start_date ? event.start_date.split("T")[0] : "",
         end_date: event.end_date ? event.end_date.split("T")[0] : "",
-        participant_ids: event.participant_ids || [],
+        invited_users: event.members?.map(m => m.id) || [],
       });
-      setCoverPreview(event.cover_url || null);
+      setCoverPreview(event.image_url ? getImageUrl(event.image_url) : null);
     } else if (isOpen) {
       // Сброс формы при создании
       setFormData({
-        title: "",
+        name: "",
         short_description: "",
         description: "",
-        payment_info: "",
-        type_id: "",
-        city_id: "",
-        max_participants: "",
+        pay_data: "",
+        type: "",
+        city: "",
+        location: "",
+        max_members: "",
         start_date: "",
         end_date: "",
-        participant_ids: [],
+        invited_users: [],
       });
       setCoverFile(null);
       setCoverPreview(null);
@@ -226,16 +230,16 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
   const toggleParticipant = (userId) => {
     setFormData((prev) => ({
       ...prev,
-      participant_ids: prev.participant_ids.includes(userId)
-        ? prev.participant_ids.filter((id) => id !== userId)
-        : [...prev.participant_ids, userId],
+      invited_users: prev.invited_users.includes(userId)
+        ? prev.invited_users.filter((id) => id !== userId)
+        : [...prev.invited_users, userId],
     }));
   };
 
-  // Фильтрация пользователей
+  // Фильтрация пользователей (используем name, surname из API)
   const filteredUsers = users.filter((user) => {
     const searchLower = userSearch.toLowerCase();
-    const fullName = `${user.first_name || ""} ${user.last_name || ""}`.toLowerCase();
+    const fullName = `${user.name || ""} ${user.surname || ""}`.toLowerCase();
     const email = (user.email || "").toLowerCase();
     return fullName.includes(searchLower) || email.includes(searchLower);
   });
@@ -243,12 +247,13 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
   // Валидация
   const validate = () => {
     const newErrors = {};
-    if (!formData.title.trim()) newErrors.title = "Обязательное поле";
+    if (!formData.name.trim()) newErrors.name = "Обязательное поле";
     if (!formData.description.trim()) newErrors.description = "Обязательное поле";
-    if (!formData.type_id) newErrors.type_id = "Выберите тип";
+    if (!formData.type) newErrors.type = "Выберите тип";
+    if (!formData.city) newErrors.city = "Выберите город";
     if (!formData.start_date) newErrors.start_date = "Укажите дату";
     if (!formData.end_date) newErrors.end_date = "Укажите дату";
-    if (!coverPreview && !isEditing) newErrors.cover = "Загрузите обложку";
+    if (!coverPreview) newErrors.cover = "Загрузите обложку";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -262,20 +267,27 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
     setIsSubmitting(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append("title", formData.title);
-      formDataToSend.append("short_description", formData.short_description);
+      // Обязательные поля
+      formDataToSend.append("name", formData.name);
       formDataToSend.append("description", formData.description);
-      formDataToSend.append("payment_info", formData.payment_info);
-      formDataToSend.append("type_id", formData.type_id);
-      if (formData.city_id) formDataToSend.append("city_id", formData.city_id);
-      if (formData.max_participants) formDataToSend.append("max_participants", formData.max_participants);
+      formDataToSend.append("type", formData.type);
+      formDataToSend.append("city", formData.city);
+      // Даты в формате YYYY-MM-DD (API ожидает format: date)
       formDataToSend.append("start_date", formData.start_date);
       formDataToSend.append("end_date", formData.end_date);
-      formData.participant_ids.forEach((id) => {
-        formDataToSend.append("participant_ids", id);
-      });
+      
+      // Опциональные поля
+      if (formData.short_description) formDataToSend.append("short_description", formData.short_description);
+      if (formData.pay_data) formDataToSend.append("pay_data", formData.pay_data);
+      if (formData.location) formDataToSend.append("location", formData.location);
+      if (formData.max_members) formDataToSend.append("max_members", String(formData.max_members));
+      if (formData.invited_users?.length > 0) {
+        formDataToSend.append("invited_users", JSON.stringify(formData.invited_users));
+      }
+      
+      // Фото (обязательно для создания)
       if (coverFile) {
-        formDataToSend.append("cover", coverFile);
+        formDataToSend.append("photo", coverFile);
       }
 
       if (isEditing) {
@@ -297,16 +309,16 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in overflow-y-auto"
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className="w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-2xl transform animate-scale-in overflow-hidden flex flex-col"
+        className="w-full sm:max-w-lg min-h-screen sm:min-h-0 sm:max-h-[90vh] bg-white sm:rounded-2xl shadow-2xl transform animate-scale-in overflow-hidden flex flex-col"
       >
         {/* Заголовок */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-          <h2 className="text-xl font-semibold text-neutral-900">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-neutral-100 sticky top-0 bg-white z-10">
+          <h2 className="text-lg sm:text-xl font-semibold text-neutral-900">
             {isEditing ? "Редактирование события" : "Новое событие"}
           </h2>
           <button
@@ -324,7 +336,7 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
               <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : (
-          <div className="px-6 py-4 space-y-4">
+          <div className="px-4 sm:px-6 py-4 space-y-4">
             {/* Название */}
             <div>
               <label className="block text-sm text-neutral-600 mb-1">
@@ -332,15 +344,15 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
               </label>
               <input
                 type="text"
-                name="title"
-                value={formData.title}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 placeholder="Например: «Балет Щелкунчик»"
                 className={`w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 ${
-                  errors.title ? "ring-2 ring-red-500/50" : ""
+                  errors.name ? "ring-2 ring-red-500/50" : ""
                 }`}
               />
-              {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
+              {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
             </div>
 
             {/* Краткое описание */}
@@ -379,8 +391,8 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
               <label className="block text-sm text-neutral-600 mb-1">Данные по оплате</label>
               <input
                 type="text"
-                name="payment_info"
-                value={formData.payment_info}
+                name="pay_data"
+                value={formData.pay_data}
                 onChange={handleChange}
                 placeholder="Опишите процесс оплаты"
                 className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500/20"
@@ -439,12 +451,12 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
               </label>
               <div className="relative">
                 <select
-                  name="type_id"
-                  value={formData.type_id}
+                  name="type"
+                  value={formData.type}
                   onChange={handleChange}
                   className={`w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500/20 ${
-                    errors.type_id ? "ring-2 ring-red-500/50" : ""
-                  } ${!formData.type_id ? "text-neutral-400" : "text-neutral-900"}`}
+                    errors.type ? "ring-2 ring-red-500/50" : ""
+                  } ${!formData.type ? "text-neutral-400" : "text-neutral-900"}`}
                 >
                   <option value="">Выберите тип</option>
                   {eventTypes.map((type) => (
@@ -457,20 +469,22 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
                   <ChevronDownIcon />
                 </div>
               </div>
-              {errors.type_id && <p className="mt-1 text-xs text-red-500">{errors.type_id}</p>}
+              {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
             </div>
 
-            {/* Место проведения */}
+            {/* Город */}
             <div>
-              <label className="block text-sm text-neutral-600 mb-1">Место проведения</label>
+              <label className="block text-sm text-neutral-600 mb-1">
+                Город <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <select
-                  name="city_id"
-                  value={formData.city_id}
+                  name="city"
+                  value={formData.city}
                   onChange={handleChange}
                   className={`w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500/20 ${
-                    !formData.city_id ? "text-neutral-400" : "text-neutral-900"
-                  }`}
+                    errors.city ? "ring-2 ring-red-500/50" : ""
+                  } ${!formData.city ? "text-neutral-400" : "text-neutral-900"}`}
                 >
                   <option value="">Выберите город</option>
                   {cities.map((city) => (
@@ -483,6 +497,20 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
                   <ChevronDownIcon />
                 </div>
               </div>
+              {errors.city && <p className="mt-1 text-xs text-red-500">{errors.city}</p>}
+            </div>
+
+            {/* Место проведения */}
+            <div>
+              <label className="block text-sm text-neutral-600 mb-1">Место проведения</label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="Адрес или название места"
+                className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              />
             </div>
 
             {/* Максимальное количество участников */}
@@ -492,8 +520,8 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
               </label>
               <input
                 type="number"
-                name="max_participants"
-                value={formData.max_participants}
+                name="max_members"
+                value={formData.max_members}
                 onChange={handleChange}
                 placeholder="Например: 500"
                 min="1"
@@ -537,7 +565,7 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
 
             {/* Выбор участников */}
             <div>
-              <label className="block text-sm text-neutral-600 mb-1">Выбор участников</label>
+              <label className="block text-sm text-neutral-600 mb-1">Приглашённые участники</label>
               <button
                 type="button"
                 onClick={() => setIsUsersExpanded(!isUsersExpanded)}
@@ -545,9 +573,9 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
               >
                 <span className="text-neutral-900">
                   Участники: {users.length}{" "}
-                  {formData.participant_ids.length > 0 && (
+                  {formData.invited_users.length > 0 && (
                     <span className="text-neutral-500">
-                      (Выбрано: {formData.participant_ids.length})
+                      (Выбрано: {formData.invited_users.length})
                     </span>
                   )}
                 </span>
@@ -581,17 +609,17 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
                       >
                         <div
                           className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
-                            formData.participant_ids.includes(user.id)
+                            formData.invited_users.includes(user.id)
                               ? "bg-red-500"
                               : "border-2 border-neutral-300"
                           }`}
                           onClick={() => toggleParticipant(user.id)}
                         >
-                          {formData.participant_ids.includes(user.id) && <CheckIcon />}
+                          {formData.invited_users.includes(user.id) && <CheckIcon />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-neutral-900 truncate">
-                            {user.first_name} {user.last_name}
+                            {user.name} {user.surname}
                           </div>
                           <div className="text-xs text-neutral-500 truncate">{user.email}</div>
                         </div>
@@ -615,7 +643,7 @@ export function EventModal({ isOpen, onClose, onSave, event = null }) {
           )}
 
           {/* Кнопка отправки */}
-          <div className="px-6 py-4 border-t border-neutral-100">
+          <div className="px-4 sm:px-6 py-4 border-t border-neutral-100 sticky bottom-0 bg-white">
             <button
               type="submit"
               disabled={isSubmitting}

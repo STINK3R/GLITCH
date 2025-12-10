@@ -13,10 +13,20 @@ export const eventsApi = {
   getAll: () => http("/api/events"),
 
   /**
-   * Получить активные события
+   * Получить активные события (статусы: active, coming soon)
    * @returns {Promise<Array>} Список активных событий
    */
-  getActive: () => http("/api/events/active"),
+  getActive: async () => {
+    const events = await http("/api/events");
+    return (events || []).filter(e => {
+      // Исключаем отменённые и завершённые
+      if (e.status === "cancelled" || e.status === "completed") {
+        return false;
+      }
+      // Активные и скоро начнутся
+      return e.status === "active" || e.status === "coming soon";
+    });
+  },
 
   /**
    * Получить события пользователя (в которых он участвует)
@@ -25,10 +35,13 @@ export const eventsApi = {
   getMy: () => http("/api/events/my"),
 
   /**
-   * Получить прошедшие события
+   * Получить прошедшие события (статус: completed)
    * @returns {Promise<Array>} Список прошедших событий
    */
-  getPast: () => http("/api/events/past"),
+  getPast: async () => {
+    const events = await http("/api/events");
+    return (events || []).filter(e => e.status === "completed");
+  },
 
   /**
    * Получить событие по ID

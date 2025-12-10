@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../useAuth";
+import { useAuthStore, USER_ROLES } from "../AuthStore";
 import { AuthLayout } from "../AuthLayout";
 import { AuthInput } from "../../../components/ui/AuthInput";
 import { AuthButton } from "../../../components/ui/AuthButton";
@@ -47,7 +48,14 @@ export const Login = () => {
       await login(email, password);
       // Очищаем сохранённый email после успешного входа
       sessionStorage.removeItem(SHARED_EMAIL_KEY);
-      navigate("/");
+      
+      // Проверяем роль пользователя и перенаправляем
+      const user = useAuthStore.getState().user;
+      if (user?.role === USER_ROLES.ADMIN) {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (e) {
       console.error(e);
       // Показываем ошибку над полями
