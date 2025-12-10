@@ -4,7 +4,7 @@ import Header from './components/layouts/Header/Header.jsx';
 import { AuthInitializer } from "./features/auth/AuthInitializer";
 
 // Страницы, где не нужен Header
-const AUTH_ROUTES = ['/login', '/register', '/recovery', '/reset-password', '/verify-email', '/terms', '/privacy'];
+const AUTH_ROUTES = ['/login', '/register', '/recovery', '/reset-password', '/verify-email', '/terms', '/privacy', '/admin'];
 
 export default function App() {
     const location = useLocation();
