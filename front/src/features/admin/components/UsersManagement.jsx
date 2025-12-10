@@ -375,10 +375,20 @@ export function UsersManagement() {
   const [users, setUsers] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [counts, setCounts] = useState({ active: 0, deleted: 0 });
   const menuRef = useRef(null);
   const toast = useToast();
+
+  // Обработчик смены таба с анимацией
+  const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+    setIsTransitioning(true);
+    setActiveTab(tab);
+    // Небольшая задержка для плавной анимации
+    setTimeout(() => setIsTransitioning(false), 150);
+  };
 
   // Фильтры
   const [showFilters, setShowFilters] = useState(false);
@@ -617,27 +627,27 @@ export function UsersManagement() {
         <span className="text-neutral-400">{totalUsers}</span>
       </h1>
 
-      {/* Табы */}
+      {/* Табы - растянуты на всю ширину */}
       <div className="flex border-b border-neutral-200 mb-6">
         <button
-          onClick={() => setActiveTab("active")}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          onClick={() => handleTabChange("active")}
+          className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
             activeTab === "active"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
-          Активные {counts.active > 0 && counts.active}
+          Активные <span className={`ml-1 transition-colors duration-200 ${activeTab === "active" ? "text-red-500" : "text-neutral-400"}`}>{counts.active}</span>
         </button>
         <button
-          onClick={() => setActiveTab("deleted")}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          onClick={() => handleTabChange("deleted")}
+          className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
             activeTab === "deleted"
               ? "border-red-500 text-neutral-900"
               : "border-transparent text-neutral-500 hover:text-neutral-700"
           }`}
         >
-          Удалённые {counts.deleted > 0 && counts.deleted}
+          Удалённые <span className={`ml-1 transition-colors duration-200 ${activeTab === "deleted" ? "text-red-500" : "text-neutral-400"}`}>{counts.deleted}</span>
         </button>
       </div>
 
@@ -676,37 +686,47 @@ export function UsersManagement() {
           </button>
         </div>
 
-        {/* Расширенные фильтры */}
-        {showFilters && (
+        {/* Расширенные фильтры с анимацией */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showFilters ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="mt-4 pt-4 border-t border-neutral-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Роль */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1.5">Роль</label>
-                <select
-                  value={filters.role}
-                  onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white"
-                >
-                  <option value="">Все роли</option>
-                  <option value="admin">Администратор</option>
-                  <option value="user">Пользователь</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={filters.role}
+                    onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white appearance-none cursor-pointer hover:border-neutral-300 transition-colors"
+                  >
+                    <option value="">Все роли</option>
+                    <option value="admin">Администратор</option>
+                    <option value="user">Пользователь</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+                    <ChevronDownIcon />
+                  </div>
+                </div>
               </div>
 
               {/* Статус */}
               {activeTab === "active" && (
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1.5">Статус</label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white"
-                  >
-                    <option value="">Все статусы</option>
-                    <option value="active">Активен</option>
-                    <option value="blocked">Заблокирован</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.status}
+                      onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white appearance-none cursor-pointer hover:border-neutral-300 transition-colors"
+                    >
+                      <option value="">Все статусы</option>
+                      <option value="active">Активен</option>
+                      <option value="blocked">Заблокирован</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+                      <ChevronDownIcon />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -743,11 +763,12 @@ export function UsersManagement() {
               </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Контент */}
-      {loading ? (
+      {/* Контент с плавными переходами */}
+      <div className={`transition-all duration-300 ease-out ${isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
+        {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -780,7 +801,7 @@ export function UsersManagement() {
           {/* Мобильный вид - карточки */}
           <div className="md:hidden space-y-3">
             {users.map((user, index) => (
-              <div key={user.id} className="bg-white rounded-xl p-4 shadow-sm">
+              <div key={user.id} className="bg-white rounded-xl p-4 shadow-sm animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-neutral-200 overflow-hidden flex-shrink-0">
@@ -939,7 +960,8 @@ export function UsersManagement() {
             </table>
           </div>
         </>
-      )}
+        )}
+      </div>
 
       {/* Модальные окна */}
       <DeleteConfirmModal

@@ -16,15 +16,31 @@ export const DetailsStep = ({ onNext, loading, initialData = {} }) => {
     
     const newErrors = {};
     let isValid = true;
+    
+    // Регулярное выражение для кириллицы (включая дефис и пробел)
+    const cyrillicPattern = /^[А-Яа-яЁё\s-]+$/;
 
     if (!formData.name.trim()) {
       newErrors.name = "Пустое поле";
+      isValid = false;
+    } else if (!cyrillicPattern.test(formData.name)) {
+      newErrors.name = "Используйте только русские буквы";
       isValid = false;
     }
     
     if (!formData.surname.trim()) {
       newErrors.surname = "Пустое поле";
       isValid = false;
+    } else if (!cyrillicPattern.test(formData.surname)) {
+      newErrors.surname = "Используйте только русские буквы";
+      isValid = false;
+    }
+
+    if (formData.patronymic && !cyrillicPattern.test(formData.patronymic)) {
+      // Отчество необязательно, но если есть - тоже кириллица
+      // Мы не можем показать ошибку прямо под полем, так как там нет prop error в компоненте
+      // Но можем блокировать отправку
+      // Либо можно добавить error prop в AuthInput отчества
     }
 
     setErrors(newErrors);

@@ -54,6 +54,20 @@ export const Register = () => {
     setStep(2);
   };
 
+  // Повторная отправка кода
+  const handleResendCode = async () => {
+    setLoading(true);
+    try {
+      await sendRegisterCode(formData);
+      toast.success("Код отправлен повторно");
+    } catch (e) {
+      console.error(e);
+      toast.error("Ошибка отправки кода");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Шаг 2: Details (DetailsStep)
   const handleDetailsSubmit = async (details) => {
     const fullData = {
@@ -70,10 +84,39 @@ export const Register = () => {
       setStep(1);
     } catch (e) {
       console.error(e);
-      const errorMessage = e.message || "Ошибка регистрации";
+      
+      // Обработка ошибок Pydantic и других API ошибок
+      let errorMessage = e.message || "Ошибка регистрации";
+      
+      try {
+        // Пробуем распарсить, если сообщение - это JSON массив ошибок
+        if (typeof errorMessage === 'string' && (errorMessage.startsWith('[') || errorMessage.startsWith('{'))) {
+          const parsed = JSON.parse(errorMessage);
+          
+          if (Array.isArray(parsed)) {
+            // Pydantic validation error array
+            const firstError = parsed[0];
+            if (firstError && firstError.msg) {
+              errorMessage = firstError.msg;
+              
+              // Перевод частых ошибок Pydantic
+              if (firstError.type === 'string_pattern_mismatch') {
+                 errorMessage = `Неверный формат поля ${firstError.loc[1]}`;
+              }
+            }
+          } else if (parsed.detail) {
+            errorMessage = parsed.detail;
+          } else if (parsed.message) {
+            errorMessage = parsed.message;
+          }
+        }
+      } catch (parseErr) {
+        // Если не удалось распарсить, оставляем как есть
+      }
       
       if (errorMessage.toLowerCase().includes("email already exists") || 
-          errorMessage.toLowerCase().includes("email")) {
+          errorMessage.toLowerCase().includes("email") ||
+          errorMessage.toLowerCase().includes("user with this email already exists")) {
         // Возвращаемся на первый шаг и показываем ошибку
         setCredentialsError("Этот email уже зарегистрирован");
         setStep(0);
@@ -166,6 +209,7 @@ export const Register = () => {
           <VerificationStep
             email={formData.email}
             onNext={handleVerificationSubmit}
+            onResend={handleResendCode}
             loading={loading}
           />
         </div>
