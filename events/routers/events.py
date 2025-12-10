@@ -55,10 +55,30 @@ async def get_events_request(
         is_user_in_event = user.id in [
             member.id for member in event.members
         ]
+        is_user_liked_event = user.id in [like.id for like in event.likes]
         event_response = EventResponse.model_validate(event)
-        result.append(event_response.model_copy(update={'is_user_in_event': is_user_in_event}))
+        result.append(event_response.model_copy(update={
+            'is_user_in_event': is_user_in_event, 
+            'is_user_liked_event': is_user_liked_event
+            }))
     return result
 
+@router.get('/events/liked')
+async def get_likes_request(
+    session: SessionDependency,
+    user: User = Depends(user_dependency),
+) -> list[EventResponse]:
+    events = await EventsService.get_liked_events(session, user=user)
+    result = []
+    for event in events:
+        is_user_in_event = user.id in [member.id for member in event.members]
+        is_user_liked_event = user.id in [like.id for like in event.likes]
+        event_response = EventResponse.model_validate(event)
+        result.append(event_response.model_copy(update={
+            'is_user_liked_event': is_user_liked_event, 
+            'is_user_in_event': is_user_in_event
+            }))
+    return result
 
 @router.get('/events/{event_id}', response_model=EventResponse, status_code=status.HTTP_200_OK)
 async def get_event_request(
@@ -69,7 +89,11 @@ async def get_event_request(
     event = await EventsService.get_event_by_id(session, event_id)
     event_response = EventResponse.model_validate(event)
     is_user_in_event = user.id in [member.id for member in event.members]
-    return event_response.model_copy(update={'is_user_in_event': is_user_in_event})
+    is_user_liked_event = user.id in [like.id for like in event.likes]
+    return event_response.model_copy(update={
+        'is_user_in_event': is_user_in_event,
+        'is_user_liked_event': is_user_liked_event
+        })
 
 
 @router.post("/events/{event_id}/join", response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -98,7 +122,10 @@ async def join_event_request(
             event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
         ))
 
-    return event_response.model_copy(update={'is_user_in_event': True})
+    return event_response.model_copy(update={
+        'is_user_in_event': True,
+        'is_user_liked_event': user.id in [like.id for like in event_obj.likes]
+        })
 
 
 @router.get('/events/{event_id}/leave', response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -127,4 +154,39 @@ async def leave_event_request(
             new_members_count=len(event_obj.members),
             event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
         ))
-    return event_response.model_copy(update={'is_user_in_event': False})
+
+    is_user_liked_event = user.id in [like.id for like in event_obj.likes]
+    return event_response.model_copy(update={
+        'is_user_in_event': False,
+        'is_user_liked_event': is_user_liked_event
+        })
+
+
+@router.post("/events/{event_id}/like", response_model=EventResponse, status_code=status.HTTP_200_OK)
+async def like_event_request(
+    session: SessionDependency,
+    event_id: int,
+    user: User = Depends(user_dependency),
+) -> EventResponse:
+    
+    event_obj = await EventsService.like_event(session, event_id, user=user)
+    event_response = EventResponse.model_validate(event_obj)
+    is_user_in_event = user.id in [member.id for member in event_obj.members]
+    return event_response.model_copy(update={'is_user_in_event': is_user_in_event,
+        'is_user_liked_event': True
+        })
+
+
+@router.delete("/events/{event_id}/unlike", response_model=EventResponse, status_code=status.HTTP_200_OK)
+async def unlike_event_request(
+    session: SessionDependency,
+    event_id: int,
+    user: User = Depends(user_dependency),
+) -> EventResponse:
+    event_obj = await EventsService.unlike_event(session, event_id, user=user)
+    event_response = EventResponse.model_validate(event_obj)
+    is_user_in_event = user.id in [member.id for member in event_obj.members]
+    return event_response.model_copy(update={'is_user_in_event': is_user_in_event,
+        'is_user_liked_event': False
+        })
+

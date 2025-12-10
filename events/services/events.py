@@ -30,7 +30,7 @@ class EventsService:
         city: Optional[EventCity] = None,
         is_admin: bool = False,
     ):
-        query = select(Event).options(selectinload(Event.members))
+        query = select(Event).options(selectinload(Event.members), selectinload(Event.likes))
 
         if user_id is not None:
             query = query.join(EventMembers).where(EventMembers.user_id == user_id)
@@ -78,7 +78,7 @@ class EventsService:
     async def get_event_by_id(session: AsyncSession, event_id: int):
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members))
+            .options(selectinload(Event.members), selectinload(Event.likes))
             .where(Event.id == event_id)
         )
         event = result.scalar_one_or_none()
@@ -125,7 +125,7 @@ class EventsService:
 
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members))
+            .options(selectinload(Event.members), selectinload(Event.likes))
             .where(Event.id == event.id)
         )
         return result.scalar_one()
@@ -169,7 +169,7 @@ class EventsService:
 
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members))
+            .options(selectinload(Event.members), selectinload(Event.likes))
             .where(Event.id == event.id)
         )
         return result.scalar_one()
@@ -195,7 +195,7 @@ class EventsService:
 
         result = await session.execute(
             select(Event)
-            .options(selectinload(Event.members))
+            .options(selectinload(Event.members), selectinload(Event.likes))
             .where(Event.id == event.id)
         )
         return result.scalar_one()
@@ -268,3 +268,39 @@ class EventsService:
             ws.append([member.id, member.name, member.surname, member.father_name, member.email])
         wb.save(excel_path)
         return str(excel_path)
+
+    @staticmethod
+    async def like_event(session: AsyncSession, event_id: int, user: User):
+        event = await EventsService.get_event_by_id(session, event_id)
+        user_ids = [like.id for like in event.likes]
+        if user.id in user_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User already liked the event"
+            )
+        event.likes.append(user)
+        await session.commit()
+        return event
+
+    @staticmethod
+    async def unlike_event(session: AsyncSession, event_id: int, user: User):
+        event = await EventsService.get_event_by_id(session, event_id)
+       
+        user_ids = [like.id for like in event.likes]
+        if user.id not in user_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User not liked the event"
+            )
+        event.likes.remove(user)
+        await session.commit()
+        return event
+    
+    @staticmethod
+    async def get_liked_events(session: AsyncSession, user: User) -> List[Event]:
+        result = await session.execute(
+            select(Event)
+            .options(selectinload(Event.likes), selectinload(Event.members))
+            .where(Event.likes.contains(user))
+        )
+        return result.scalars().all()

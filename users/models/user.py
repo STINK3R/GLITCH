@@ -22,3 +22,4 @@ class User(BaseModel):
     hashed_password = Column(String, nullable=False)
 
     events = relationship("Event", secondary="event_members", back_populates="members")
+    liked_events = relationship("Event", secondary="event_likes", back_populates="likes")

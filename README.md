@@ -8,3 +8,18 @@ SMTP_FROM_NAME=
 2. To up: docker-compose up --build 
 
 3. To shutdown: docker-compose down (-v for clear DB)
+
+
+TODO:
+Add comments and rating in events (High)
+User profile (High)
+App notifications (High)
+
+Search by event name substring (Medium)
+
+Deleting old images (Low)
+Make secure dict for verification codes (Low)
+
+
+
+
