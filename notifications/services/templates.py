@@ -206,3 +206,21 @@ class TemplatesService:
             new_password=new_password,
             login_url=login_url
             )
+    
+    @staticmethod
+    async def get_event_review_email_html(
+        event_name: str, 
+        event_date: str, 
+        event_time: str, 
+        event_location: str, 
+        event_url: str
+    ) -> str:
+        template_content = await TemplatesService.load_template("event-review.html")
+        template = Template(template_content)
+        return template.substitute(
+            event_name=event_name, 
+            event_date=event_date,
+            event_time=event_time,
+            event_location=event_location,
+            event_url=event_url
+            )

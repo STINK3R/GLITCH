@@ -214,3 +214,22 @@ class EmailService:
             login_url=f"{settings.APP_URL}{settings.LOGIN_URL}"
             )
         return await EmailService.send_email(email, subject, html_body)
+    
+    @staticmethod
+    async def send_event_review_email(
+        email: str, 
+        event_name: str, 
+        event_date: str, 
+        event_time: str, 
+        event_location: str, 
+        event_url: str
+        ) -> bool:
+        subject = "Оценка события"
+        html_body = await TemplatesService.get_event_review_email_html(
+            event_name=event_name,
+            event_date=event_date,
+            event_time=event_time,
+            event_location=event_location,
+            event_url=event_url
+            )
+        return await EmailService.send_email(email, subject, html_body)

@@ -20,7 +20,8 @@ from admin.schemas.responses import UserAdminResponse
 from admin.schemas.requests import UserUpdateRequest, ResetUserPasswordRequest
 from notifications.services.email import EmailService
 from main.config.settings import settings
-
+from notifications.services.notifications import NotificationsService
+from notifications.enums.notifications import NotificationType
 router = APIRouter()
 
 @router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
@@ -94,6 +95,14 @@ async def create_event_request(
                     event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_obj.id)}"
                 ))
 
+                await NotificationsService.create_notification(
+                    session=session,
+                    user_id=user.id,
+                    event_id=event_obj.id,
+                    type=NotificationType.EVENT_CREATED
+                )
+        await session.commit()
+
     event_response = EventResponse.model_validate(event_obj)
     return event_response.model_copy(update={'is_user_in_event': False})
 
@@ -145,6 +154,12 @@ async def update_event_request(
                 event_location=new_event.location if new_event.location else "Не указано",  
                 event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_id)}"
             ))
+            await NotificationsService.create_notification(
+                session=session,
+                user_id=member.id,
+                event_id=event_id,
+                type=NotificationType.EVENT_CANCELLED
+            )
     else:
         members = await EventsService.get_event_members(session, event_id)
         for member in members:
@@ -158,6 +173,12 @@ async def update_event_request(
                 new_description=new_event.description if new_event.description else None,
                 event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_id)}"
             ))
+            await NotificationsService.create_notification(
+                session=session,
+                user_id=member.id,
+                event_id=event_id,
+                type=NotificationType.EVENT_UPDATED
+            )
 
     if photo:
         # TODO: Delete old image

@@ -58,5 +58,6 @@ class Event(BaseModel):
 
     likes = relationship("User", secondary=EventLikes.__table__, back_populates="liked_events")
 
+    notifications_relation = relationship("Notification", back_populates="event")
 
 # TODO: add comments and ratings
