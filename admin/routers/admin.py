@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from fastapi import APIRouter, Body, File, status, HTTPException
 from fastapi.responses import FileResponse
@@ -57,7 +57,6 @@ async def create_event_request(
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
-    # Parse invited_users from JSON string
     invited_users_list: Optional[List[int]] = None
     if invited_users:
         try:
@@ -72,6 +71,7 @@ async def create_event_request(
             )
 
     image_path = await ImagesService.save_image(photo)
+
     event_obj = await EventsService.create_event(session, event, image_path)
 
     if invited_users_list:
@@ -138,7 +138,6 @@ async def update_event_request(
         members = await EventsService.get_event_members(session, event_id)
         for member in members:
             formatted_event_date = event.start_date.strftime("%d.%m.%Y")
-            formatted_event_time = event.start_date.strftime("%H:%M")
             create_task(EmailService.send_event_cancelled_email(
                 email=member.email,
                 event_name=new_event.name,
@@ -149,16 +148,14 @@ async def update_event_request(
     else:
         members = await EventsService.get_event_members(session, event_id)
         for member in members:
-            formatted_event_date = event.start_date.strftime("%d.%m.%Y")
-            formatted_event_time = event.start_date.strftime("%H:%M")
             create_task(EmailService.send_event_updated_email(
                 email=member.email,
                 event_name=event.name,
-                old_date=formatted_event_date,
-                new_date=formatted_event_date,
-                old_location=event.location if event.location else "Не указано",
-                new_location=new_event.location if new_event.location else "Не указано",
-                new_description=new_event.description if new_event.description else "Не указано",
+                old_date=event.start_date.strftime("%d.%m.%Y") if new_event.start_date else None,
+                new_date=new_event.start_date.strftime("%d.%m.%Y") if new_event.start_date else None,
+                old_location=event.location if new_event.location else None,
+                new_location=new_event.location if new_event.location else None,
+                new_description=new_event.description if new_event.description else None,
                 event_url=f"{settings.APP_URL}{settings.EVENT_DETAIL_URL.format(event_id=event_id)}"
             ))
 

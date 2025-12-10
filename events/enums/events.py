@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class EventStatus(Enum):
-    COMMING_SOON = "coming soon"
+    COMING_SOON = "coming soon"
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
