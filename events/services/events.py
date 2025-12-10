@@ -186,13 +186,8 @@ class EventsService:
         return True
 
     @staticmethod
-    async def update_event(session: AsyncSession, event_id: int, event_request: EventUpdateRequest, new_image_url: Optional[str] = None) -> Event:
-        event = await EventsService.get_event_by_id(session, event_id)
-        if not event:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Event not found"
-            )
+    async def update_event(session: AsyncSession, event: Event, event_request: EventUpdateRequest) -> Event:
+        
         event.name = event_request.name if event_request.name else event.name
         event.start_date = EventsService._to_naive_datetime(event_request.start_date) if event_request.start_date else event.start_date
         event.end_date = EventsService._to_naive_datetime(event_request.end_date) if event_request.end_date else event.end_date
@@ -202,7 +197,6 @@ class EventsService:
         event.max_members = event_request.max_members if event_request.max_members else event.max_members
         event.city = event_request.city if event_request.city else event.city
         event.location = event_request.location if event_request.location else event.location
-        event.image_url = new_image_url if new_image_url else event.image_url
         await session.commit()
         await session.refresh(event)
         return event

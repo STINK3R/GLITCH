@@ -16,7 +16,7 @@ from users.schemas.requests import (
 )
 from users.schemas.responses import TokenResponse, UserResponse
 from users.services.auth import AuthService
-from users.services.email import EmailService
+from notifications.services.email import EmailService
 from users.services.users import UsersService
 
 router = APIRouter()
@@ -130,12 +130,6 @@ async def auth_request(request: AuthRequest, session: SessionDependency):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
-        )
-
-    if user.status == UserStatus.BLOCKED:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is blocked"
         )
 
     if user.status == UserStatus.DELETED:

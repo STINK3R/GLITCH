@@ -8,5 +8,4 @@ class UserRole(Enum):
 
 class UserStatus(Enum):
     ACTIVE = "active"
-    BLOCKED = "blocked"
     DELETED = "deleted"
