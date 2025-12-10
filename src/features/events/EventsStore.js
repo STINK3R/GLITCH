@@ -11,20 +11,17 @@ export const EVENT_TABS = {
   PAST: "past",
 };
 
-// Статусы событий (согласно API: "coming soon", "active", "completed", "cancelled")
+// Статусы событий (только Активное и Прошедшее)
 export const EVENT_STATUS = {
-  COMING_SOON: "coming soon",
   ACTIVE: "active",
   COMPLETED: "completed",
-  CANCELLED: "cancelled",
   // Для обратной совместимости
   PAST: "completed",
-  REJECTED: "cancelled",
 };
 
 export const useEventsStore = create((set, get) => ({
-  // Текущая активная вкладка (по умолчанию "Активные")
-  activeTab: EVENT_TABS.ACTIVE,
+  // Текущая активная вкладка (по умолчанию "Мои события")
+  activeTab: EVENT_TABS.MY,
 
   // Списки событий по категориям
   myEvents: [],
@@ -35,8 +32,17 @@ export const useEventsStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
+  // Поисковый запрос
+  searchQuery: "",
+
   // Детальная информация о выбранном событии
   selectedEvent: null,
+
+  /**
+   * Установить поисковый запрос
+   * @param {string} query - Поисковая строка
+   */
+  setSearchQuery: (query) => set({ searchQuery: query }),
 
   /**
    * Установить активную вкладку

@@ -1,9 +1,10 @@
 import { useLocation } from "react-router-dom";
 import AppRoutes from "./routes";
 import Header from './components/layouts/Header/Header.jsx';
+import MobileBottomNav from './components/layouts/MobileBottomNav';
 import { AuthInitializer } from "./features/auth/AuthInitializer";
 
-// Страницы, где не нужен Header
+// Страницы, где не нужен Header и нижняя навигация
 const AUTH_ROUTES = ['/login', '/register', '/recovery', '/reset-password', '/verify-email', '/terms', '/privacy'];
 
 export default function App() {
@@ -15,9 +16,10 @@ export default function App() {
     return (
         <AuthInitializer>
             {!isAuthPage && <Header />}
-            <main className={isAuthPage ? "" : "page-transition"}>
+            <main className={isAuthPage ? "" : "page-transition pb-[56px] lg:pb-0"}>
                 <AppRoutes />
             </main>
+            {!isAuthPage && <MobileBottomNav />}
         </AuthInitializer>
     );
 }

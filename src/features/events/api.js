@@ -47,19 +47,25 @@ export const eventsApi = {
 
   /**
    * Получить события пользователя (передаём -1)
+   * @param {Object} filters - Дополнительные фильтры
    * @returns {Promise<Array>} Список событий пользователя
    */
-  getMy: () => {
+  getMy: (filters = {}) => {
     // Параметр -1 возвращает события пользователя
-    return http("/api/events?user_id=-1");
+    const queryParams = { ...filters, user_id: -1 };
+    const queryString = buildQueryString(queryParams);
+    return http(`/api/events${queryString ? `?${queryString}` : ""}`);
   },
 
   /**
    * Получить прошедшие события (status=completed)
+   * @param {Object} filters - Дополнительные фильтры
    * @returns {Promise<Array>} Список прошедших событий
    */
-  getPast: () => {
-    return http("/api/events?status=completed");
+  getPast: (filters = {}) => {
+    const queryParams = { ...filters, status: "completed" };
+    const queryString = buildQueryString(queryParams);
+    return http(`/api/events${queryString ? `?${queryString}` : ""}`);
   },
 
   /**
@@ -103,22 +109,22 @@ export const eventsApi = {
     }),
 
   /**
-   * Добавить событие в избранное
+   * Добавить событие в избранное (лайк)
    * @param {number|string} eventId - ID события
-   * @returns {Promise<Object>} Результат операции
+   * @returns {Promise<Object>} Обновленное событие
    */
-  addToFavorites: (eventId) =>
-    http(`/api/events/${eventId}/favorite`, {
+  likeEvent: (eventId) =>
+    http(`/api/events/${eventId}/like`, {
       method: "POST",
     }),
 
   /**
-   * Удалить событие из избранного
+   * Удалить событие из избранного (убрать лайк)
    * @param {number|string} eventId - ID события
-   * @returns {Promise<Object>} Результат операции
+   * @returns {Promise<Object>} Обновленное событие
    */
-  removeFromFavorites: (eventId) =>
-    http(`/api/events/${eventId}/favorite`, {
+  unlikeEvent: (eventId) =>
+    http(`/api/events/${eventId}/unlike`, {
       method: "DELETE",
     }),
 

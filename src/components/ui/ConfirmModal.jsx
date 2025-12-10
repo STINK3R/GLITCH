@@ -51,12 +51,12 @@ export function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/70 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/80 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className="w-full max-w-md bg-white rounded-2xl shadow-xl transform animate-scale-in p-8"
+        className="w-full max-w-[400px] bg-white rounded-[20px] shadow-lg transform animate-scale-in px-6 py-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -64,18 +64,18 @@ export function ConfirmModal({
         {/* Заголовок */}
         <h3
           id="modal-title"
-          className="text-xl font-semibold text-neutral-900 text-center mb-6"
+          className="text-lg font-medium text-neutral-900 text-center mb-6"
         >
           {title}
         </h3>
 
         {/* Кнопки */}
-        <div className="flex gap-4">
-          {/* Кнопка отмены участия (серая) */}
+        <div className="flex gap-3">
+          {/* Кнопка отмены участия (серая без обводки) */}
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="flex-1 px-6 py-4 text-base font-medium text-neutral-700 bg-neutral-100 rounded-xl hover:bg-neutral-200 transition-colors disabled:opacity-50"
+            className="flex-1 h-[48px] px-4 text-base font-medium text-neutral-700 bg-[#E3E3E3] rounded-[20px] hover:bg-[#D5D5D5] transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -109,7 +109,7 @@ export function ConfirmModal({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 px-6 py-4 text-base font-medium text-white bg-[#EE2C34] rounded-xl hover:bg-[#D42930] transition-colors disabled:opacity-50"
+            className="flex-1 h-[48px] px-4 text-base font-medium text-white bg-[#EE2C34] rounded-[20px] hover:bg-[#D42930] transition-colors disabled:opacity-50"
           >
             {cancelText}
           </button>

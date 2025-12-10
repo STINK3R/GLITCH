@@ -29,7 +29,7 @@ export const VerificationStep = ({ email, onNext, onResend, loading }) => {
   };
 
   return (
-    <div className="animate-fade-in text-center pt-12">
+    <div className="animate-fade-in text-center">
       <h2 className="text-2xl font-bold mb-3">Проверьте вашу почту</h2>
       <p className="text-neutral-400 text-sm mb-10 px-4 leading-relaxed">
         Перейдите по ссылке или введите код<br />в формате xxx-xxx

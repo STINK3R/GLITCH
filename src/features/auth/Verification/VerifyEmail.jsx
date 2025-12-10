@@ -52,8 +52,8 @@ export const VerifyEmail = () => {
   };
 
   return (
-    <AuthLayout showBack onBack={() => navigate("/login")}>
-      <div className="text-center animate-fade-in pt-8">
+    <AuthLayout showBack onBack={() => navigate("/login")} hideLogo>
+      <div className="text-center animate-fade-in">
         {status === "loading" && (
           <div>
             <h2 className="text-2xl font-bold mb-4">Проверка почты...</h2>

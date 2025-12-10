@@ -30,20 +30,42 @@ function normalizeResponse(data) {
 }
 
 /**
+ * Безопасное выполнение запроса с обработкой ошибок
+ */
+async function safeFetch(fetchFn) {
+  try {
+    const data = await fetchFn();
+    return normalizeResponse(data);
+  } catch (error) {
+    const status = error?.response?.status || error?.status;
+    // Если 404 или 400 (нет результатов по фильтру), возвращаем пустой список
+    if (status === 404 || status === 400 || status === 422) {
+      return [];
+    }
+    // Если ошибка сети или сервера недоступен, возвращаем пустой список
+    if (error?.code === 'ERR_NETWORK' || error?.code === 'ECONNREFUSED') {
+      console.warn('Network error, returning empty list:', error.message);
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
  * Хук для получения событий пользователя
  */
-export function useMyEvents() {
+export function useMyEvents(filters = {}) {
   const setMyEvents = useEventsStore((s) => s.setMyEvents);
 
   return useQuery({
-    queryKey: EVENTS_QUERY_KEYS.my,
+    queryKey: [...EVENTS_QUERY_KEYS.my, filters],
     queryFn: async () => {
-      const data = await eventsApi.getMy();
-      const events = normalizeResponse(data);
+      const events = await safeFetch(() => eventsApi.getMy(filters));
       setMyEvents(events);
       return events;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false, // Не повторять запросы при ошибках (особенно 404)
   });
 }
 
@@ -56,43 +78,43 @@ export function useActiveEvents(filters = {}) {
   return useQuery({
     queryKey: [...EVENTS_QUERY_KEYS.active, filters],
     queryFn: async () => {
-      const data = await eventsApi.getActive(filters);
-      const events = normalizeResponse(data);
+      const events = await safeFetch(() => eventsApi.getActive(filters));
       setActiveEvents(events);
       return events;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 }
 
 /**
  * Хук для получения прошедших событий
  */
-export function usePastEvents() {
+export function usePastEvents(filters = {}) {
   const setPastEvents = useEventsStore((s) => s.setPastEvents);
 
   return useQuery({
-    queryKey: EVENTS_QUERY_KEYS.past,
+    queryKey: [...EVENTS_QUERY_KEYS.past, filters],
     queryFn: async () => {
-      const data = await eventsApi.getPast();
-      const events = normalizeResponse(data);
+      const events = await safeFetch(() => eventsApi.getPast(filters));
       setPastEvents(events);
       return events;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 }
 
 /**
  * Хук для загрузки всех событий по вкладкам
- * @param {Object} filters - Параметры фильтрации (применяются к активным событиям)
+ * @param {Object} filters - Параметры фильтрации (применяются ко всем вкладкам)
  */
 export function useAllEvents(filters = {}) {
   const activeTab = useEventsStore((s) => s.activeTab);
 
-  const myEventsQuery = useMyEvents();
+  const myEventsQuery = useMyEvents(filters);
   const activeEventsQuery = useActiveEvents(filters);
-  const pastEventsQuery = usePastEvents();
+  const pastEventsQuery = usePastEvents(filters);
 
   // Определяем текущий запрос на основе активной вкладки
   const currentQuery = {
@@ -188,5 +210,28 @@ export function useSimilarEvents(type, excludeId) {
     queryFn: () => eventsApi.getSimilar(type, excludeId),
     enabled: !!type && !!excludeId,
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Хук для добавления/удаления события из избранного (лайк/анлайк)
+ */
+export function useToggleFavorite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, isLiked }) => {
+      if (isLiked) {
+        return eventsApi.unlikeEvent(eventId);
+      } else {
+        return eventsApi.likeEvent(eventId);
+      }
+    },
+    onSuccess: (data, variables) => {
+      // Инвалидируем кэш событий
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.all });
+      // Инвалидируем детали события
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEYS.detail(variables.eventId) });
+    },
   });
 }

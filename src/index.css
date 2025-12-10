@@ -6,8 +6,9 @@
 
 @font-face {
   font-family: 'Graphik LCG';
-  src: url('/fonts/GraphikLCG-Regular.woff2') format('woff2'),
-       url('/fonts/GraphikLCG-Regular.woff') format('woff');
+  src: url('/fonts/GraphikLCG/GraphikLCG-Regular.woff2') format('woff2'),
+       url('/fonts/GraphikLCG/GraphikLCG-Regular.woff') format('woff'),
+       url('/fonts/GraphikLCG/GraphikLCG-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -15,8 +16,9 @@
 
 @font-face {
   font-family: 'Graphik LCG';
-  src: url('/fonts/GraphikLCG-Medium.woff2') format('woff2'),
-       url('/fonts/GraphikLCG-Medium.woff') format('woff');
+  src: url('/fonts/GraphikLCG/GraphikLCG-Medium.woff2') format('woff2'),
+       url('/fonts/GraphikLCG/GraphikLCG-Medium.woff') format('woff'),
+       url('/fonts/GraphikLCG/GraphikLCG-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -24,8 +26,9 @@
 
 @font-face {
   font-family: 'Graphik LCG';
-  src: url('/fonts/GraphikLCG-Semibold.woff2') format('woff2'),
-       url('/fonts/GraphikLCG-Semibold.woff') format('woff');
+  src: url('/fonts/GraphikLCG/GraphikLCG-Semibold.woff2') format('woff2'),
+       url('/fonts/GraphikLCG/GraphikLCG-Semibold.woff') format('woff'),
+       url('/fonts/GraphikLCG/GraphikLCG-Semibold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -33,9 +36,30 @@
 
 @font-face {
   font-family: 'Graphik LCG';
-  src: url('/fonts/GraphikLCG-Bold.woff2') format('woff2'),
-       url('/fonts/GraphikLCG-Bold.woff') format('woff');
+  src: url('/fonts/GraphikLCG/GraphikLCG-Bold.woff2') format('woff2'),
+       url('/fonts/GraphikLCG/GraphikLCG-Bold.woff') format('woff'),
+       url('/fonts/GraphikLCG/GraphikLCG-Bold.ttf') format('truetype');
   font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik LCG';
+  src: url('/fonts/GraphikLCG/GraphikLCG-Light.woff2') format('woff2'),
+       url('/fonts/GraphikLCG/GraphikLCG-Light.woff') format('woff'),
+       url('/fonts/GraphikLCG/GraphikLCG-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik LCG';
+  src: url('/fonts/GraphikLCG/GraphikLCG-Black.woff2') format('woff2'),
+       url('/fonts/GraphikLCG/GraphikLCG-Black.woff') format('woff'),
+       url('/fonts/GraphikLCG/GraphikLCG-Black.ttf') format('truetype');
+  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
@@ -329,12 +353,14 @@ button {
 }
 
 /* Скрытие скроллбара */
-.no-scrollbar {
+.no-scrollbar,
+.scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 
@@ -529,4 +555,99 @@ button {
 
 .animate-tab-switch {
   animation: tabSwitch 0.2s ease-out;
+}
+
+/* Анимация выезда снизу для мобильных модалок */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Анимация масштабирования для модальных окон */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* ===========================================
+   Анимации переходов между страницами
+   =========================================== */
+
+/* Плавное появление страницы */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: pageEnter 0.3s ease-out;
+}
+
+/* Анимация для карточек при загрузке */
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-enter {
+  animation: cardEnter 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+/* Задержки для каскадного появления карточек */
+.animate-card-enter:nth-child(1) { animation-delay: 0ms; }
+.animate-card-enter:nth-child(2) { animation-delay: 50ms; }
+.animate-card-enter:nth-child(3) { animation-delay: 100ms; }
+.animate-card-enter:nth-child(4) { animation-delay: 150ms; }
+.animate-card-enter:nth-child(5) { animation-delay: 200ms; }
+.animate-card-enter:nth-child(6) { animation-delay: 250ms; }
+.animate-card-enter:nth-child(7) { animation-delay: 300ms; }
+.animate-card-enter:nth-child(8) { animation-delay: 350ms; }
+.animate-card-enter:nth-child(9) { animation-delay: 400ms; }
+
+/* ===========================================
+   Утилиты для фиксации iOS blur проблем
+   =========================================== */
+
+.backface-visibility-hidden {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Фикс для iOS overscroll */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }

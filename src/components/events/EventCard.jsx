@@ -6,66 +6,32 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { EVENT_STATUS } from "../../features/events/EventsStore";
+import { useToggleFavorite } from "../../features/events/useEvents";
 
-// Конфигурация статусов для отображения (согласно API)
+import heartIcon from "/icons/heart-on-events-card.svg";
+import heartFilledIcon from "/icons/add-heart-on-events-card.svg";
+import participantsIcon from "/icons/people.svg";
+
+// Конфигурация статусов для отображения (только Активное и Прошедшее)
 const STATUS_CONFIG = {
-  [EVENT_STATUS.COMING_SOON]: {
-    label: "Скоро",
-    className: "bg-blue-500 text-white",
-  },
   [EVENT_STATUS.ACTIVE]: {
     label: "Активное",
     className: "bg-[#EE2C34] text-white",
   },
   [EVENT_STATUS.COMPLETED]: {
-    label: "Завершено",
+    label: "Прошедшее",
     className: "bg-neutral-500 text-white",
   },
-  [EVENT_STATUS.CANCELLED]: {
-    label: "Отменено",
-    className: "bg-neutral-400 text-white",
-  },
   // Для обратной совместимости
-  "coming soon": {
-    label: "Скоро",
-    className: "bg-blue-500 text-white",
-  },
   "active": {
     label: "Активное",
     className: "bg-[#EE2C34] text-white",
   },
   "completed": {
-    label: "Завершено",
+    label: "Прошедшее",
     className: "bg-neutral-500 text-white",
   },
-  "cancelled": {
-    label: "Отменено",
-    className: "bg-neutral-400 text-white",
-  },
 };
-
-// Иконка сердца (избранное)
-const HeartIcon = ({ filled }) => (
-  <svg 
-    className={`w-5 h-5 ${filled ? "text-red-500" : "text-neutral-400"}`} 
-    fill={filled ? "currentColor" : "none"} 
-    viewBox="0 0 24 24" 
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-  </svg>
-);
-
-// Иконка участников (4 квадратика)
-const ParticipantsIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-    <rect x="1" y="1" width="6" height="6" rx="1.5" />
-    <rect x="9" y="1" width="6" height="6" rx="1.5" />
-    <rect x="1" y="9" width="6" height="6" rx="1.5" />
-    <rect x="9" y="9" width="6" height="6" rx="1.5" />
-  </svg>
-);
 
 /**
  * Получить значение поля с поддержкой разных названий
@@ -119,19 +85,35 @@ function formatDateRange(startDate, endDate) {
 
 export function EventCard({ event }) {
   const [isFavorite, setIsFavorite] = useState(
-    getField(event, "isFavorite", "is_favorite", "favorite") || false
+    getField(event, "is_user_liked_event", "isFavorite", "is_favorite", "isLiked") || false
   );
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Хук для лайка/анлайка
+  const toggleFavoriteMutation = useToggleFavorite();
   
   // Получаем статус с поддержкой разных форматов
   const status = getField(event, "status", "state") || EVENT_STATUS.ACTIVE;
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG[EVENT_STATUS.ACTIVE];
   
-  // Обработчик клика по избранному
+  // Обработчик клика по избранному (оптимистичное обновление)
   const handleFavoriteClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
-    // TODO: вызвать API для добавления/удаления из избранного
+    // Сразу меняем UI
+    const newValue = !isFavorite;
+    setIsFavorite(newValue);
+    // Отправляем запрос в фоне
+    toggleFavoriteMutation.mutate(
+      { eventId: event?.id, isLiked: !newValue },
+      {
+        onError: () => {
+          // Откатываем при ошибке
+          setIsFavorite(!newValue);
+          console.error("Ошибка изменения избранного");
+        },
+      }
+    );
   };
 
   // Получаем изображение с поддержкой разных названий полей
@@ -148,55 +130,108 @@ export function EventCard({ event }) {
   // Получаем количество участников (из массива members или поля)
   const members = getField(event, "members") || [];
   const participantsCount = members.length || getField(event, "participantsCount", "participants_count", "members_count", "users_count", "count") || 0;
+  // Максимальное количество участников (ограничение)
+  const maxMembers = getField(event, "max_members", "maxMembers", "max_participants", "limit");
+
+  // Получаем краткое описание (short_description) - ключевое поле для hover эффекта
+  const shortDescription = getField(event, "short_description", "shortDescription", "short_desc") || "";
+  
+  // Определяем, показывать ли блюр и тултип (только если есть краткое описание)
+  const hasShortDescription = Boolean(shortDescription);
 
   return (
     <Link
       to={`/events/${event?.id || 1}`}
-      className="group relative flex flex-col bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg"
+      className="group relative flex flex-col transition-all duration-300 animate-card-enter"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Изображение */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+      <div className="relative h-[140px] md:h-[200px] overflow-hidden bg-neutral-100 rounded-[16px] md:rounded-[20px]">
         <img
           src={imageUrl}
           alt={title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className={`w-full h-full object-cover transition-all duration-500 ${
+            isHovered 
+              ? hasShortDescription 
+                ? "scale-110 blur-[6px]" 
+                : "scale-110" 
+              : "scale-100 blur-0"
+          }`}
           loading="lazy"
           onError={(e) => {
             e.target.src = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop";
           }}
         />
         
+        {/* Затемнение при ховере - только если есть краткое описание */}
+        {hasShortDescription && (
+          <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`} />
+        )}
+        
+        {/* Тултип с кратким описанием - только если есть short_description */}
+        {hasShortDescription && (
+          <div className={`absolute inset-0 flex flex-col justify-center items-center p-6 transition-all duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}>
+            <p className="text-white text-center text-[15px] leading-relaxed font-medium drop-shadow-lg">
+              {shortDescription}
+            </p>
+          </div>
+        )}
+        
+        {/* Кнопка избранное - верхний правый угол */}
+        <button
+          onClick={handleFavoriteClick}
+          className={`absolute top-2 right-2 md:top-3 md:right-3 flex items-center justify-center px-1.5 py-1 md:px-2 bg-[#F5F5F5] rounded-full md:rounded-[18px] hover:bg-white transition-all z-10 ${
+            isHovered ? "opacity-100" : ""
+          }`}
+        >
+          <div className={`w-4 h-4 transition-transform duration-300 ease-out ${isFavorite ? "scale-110" : "scale-100"}`}>
+            <img 
+              src={isFavorite ? heartFilledIcon : heartIcon} 
+              alt="" 
+              className="w-full h-full transition-all duration-300 ease-out"
+              style={{ 
+                filter: isFavorite ? "drop-shadow(0 0 4px rgba(238, 44, 52, 0.4))" : "none",
+              }}
+            />
+          </div>
+        </button>
+
         {/* Бейдж статуса - верхний левый угол */}
-        <div className="absolute top-3 left-3">
-          <span className={`px-3 py-1.5 text-xs font-medium rounded-lg ${statusConfig.className}`}>
+        <div className={`absolute top-2 left-2 md:top-3 md:left-3 z-10 transition-opacity duration-300 ${
+          isHovered && hasShortDescription ? "opacity-0" : "opacity-100"
+        }`}>
+          <span className={`flex items-center justify-center px-2 py-0.5 md:py-1 text-xs md:text-sm font-medium rounded-full md:rounded-[18px] ${statusConfig.className}`}>
             {statusConfig.label}
           </span>
         </div>
 
-        {/* Кнопка избранное - верхний правый угол */}
-        <button
-          onClick={handleFavoriteClick}
-          className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-sm"
-        >
-          <HeartIcon filled={isFavorite} />
-        </button>
-
         {/* Счетчик участников - нижний правый угол */}
-        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-medium text-neutral-700 shadow-sm">
-          <ParticipantsIcon />
-          <span>{participantsCount}</span>
+        <div className={`absolute bottom-2 right-2 md:bottom-3 md:right-3 flex items-center gap-1 md:gap-1.5 px-2 py-0.5 md:px-2.5 md:py-1 bg-[#F5F5F5] rounded-full md:rounded-[18px] text-xs md:text-sm font-medium text-neutral-900 z-10 transition-opacity duration-300 ${
+          isHovered && hasShortDescription ? "opacity-0" : "opacity-100"
+        }`}>
+          <img src={participantsIcon} alt="" className="w-3 h-3 md:w-4 md:h-4" />
+          <span>
+            {maxMembers && maxMembers > 0 
+              ? `${participantsCount} / ${maxMembers}` 
+              : participantsCount}
+          </span>
         </div>
       </div>
 
       {/* Контент */}
-      <div className="flex flex-col p-4">
+      <div className="flex flex-col pt-2 pb-2 md:pb-4">
         {/* Название */}
-        <h3 className="text-base font-semibold text-neutral-900 line-clamp-2 group-hover:text-[#EE2C34] transition-colors">
+        <h3 className="text-sm md:text-[20px] leading-tight md:leading-6 font-medium text-neutral-900 line-clamp-2">
           {title}
         </h3>
 
         {/* Даты */}
-        <p className="mt-1.5 text-sm text-neutral-500">
+        <p className="mt-1 md:mt-2 text-xs md:text-[15px] leading-4 md:leading-5 text-[#2A2A2A]">
           {formatDateRange(startDate, endDate)}
         </p>
       </div>
