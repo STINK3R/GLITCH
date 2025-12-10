@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from users.enums.user import UserRole, UserStatus
+from users.schemas.responses import UserResponse
 
 
 class UserAdminResponse(BaseModel):
@@ -24,5 +25,6 @@ class EventCommentAdminResponse(BaseModel):
 
     event_id: int
     user_id: int
+    user: UserResponse
     comment: str
     rating: int | None

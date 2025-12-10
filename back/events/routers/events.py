@@ -15,7 +15,8 @@ from users.dependencies.users import user_dependency
 from users.enums.user import UserRole
 from users.models.user import User
 from users.services.users import UsersService
-
+from admin.dependencies.admin import admin_dependency
+from admin.schemas.responses import EventCommentAdminResponse
 router = APIRouter()
 
 
@@ -216,3 +217,14 @@ async def comment_event_request(
         'is_user_in_event': user.id in [member.id for member in event_obj.members],
         'is_user_liked_event': user.id in [like.id for like in event_obj.likes]
     })
+
+
+@router.get('/events/{event_id}/comments', response_model=List[EventCommentAdminResponse], status_code=status.HTTP_200_OK)
+async def get_event_comments_request(
+    session: SessionDependency,
+    event_id: int,
+    user: User = Depends(user_dependency),
+) -> List[EventCommentAdminResponse]:
+    comments = await EventsService.get_comments_for_event(session, event_id)
+    comments_response = [EventCommentAdminResponse.model_validate(comment) for comment in comments]
+    return comments_response
