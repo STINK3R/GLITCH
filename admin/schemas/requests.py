@@ -29,3 +29,6 @@ class UserUpdateRequest(BaseModel):
 
     role: UserRole 
     status: UserStatus
+
+class ResetUserPasswordRequest(BaseModel):
+    new_password: str
